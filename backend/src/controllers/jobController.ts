@@ -34,4 +34,24 @@ export class JobController {
             res.status(500).json({ message: "Lỗi hệ thống!" });
         }
     }
+    // API lấy danh sách toàn bộ tin tuyển dụng (public)
+    static async getAllJobs(req: Request, res: Response): Promise<void> {
+        try {
+            // Lệnh SQL lấy tất cả các jobs, bài mới đăng sẽ xếp lên đầu (nhờ ORDER BY ... DESC)
+            const [jobs]: any = await pool.query('SELECT * FROM jobs ORDER BY created_at DESC');
+
+            res.status(200).json({
+                status: "success",
+                message: "Lấy danh sách thành công",
+                data: {
+                    total: jobs.length, // Tiện tay đếm luôn tổng số bài báo cho Frontend
+                    jobs: jobs // Trả toàn bộ dữ liệu bài viết
+                }
+            })
+
+        } catch (error) {
+            console.error("Lỗi khi Lấy danh sách Job:", error);
+            res.status(500).json({ message: "Lỗi hệ thống!" });
+        }
+    }
 }
