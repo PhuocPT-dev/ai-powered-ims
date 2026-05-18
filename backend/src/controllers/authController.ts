@@ -9,7 +9,7 @@ export class AuthController {
     // Hàm xử lý đăng ký (Dùng static gỏi thẳng từ class mà không cần tạo Object)
     static async register(req: Request, res: Response): Promise<void> {
         try {
-            const { email, password, full_name, phone } = req.body;
+            const { email, password, full_name, phone, role } = req.body;
 
             if (!email || !password || !full_name) {
                 res.status(400).json({ message: "Vui lòng điền đủ email, password và họ tên!" });
@@ -32,9 +32,11 @@ export class AuthController {
 
             //Bước 4: Lưu người dùng mới và Database
             //Role mặc định trong CSDL đã cài sawnx là 'CANDIDATE', nên ta không cần INSERT cột role nữa
+            // Nếu Frontend có gửi role lên thì lấy (để test), không thì mặc định là CANDIDATE cho an toàn
+            const userRole = role || 'CANDIDATE';
             const [result] = await pool.query(
-                'INSERT INTO users (email, password, full_name, phone) VALUES (?, ?, ?, ?)',
-                [email, hashedPassword, full_name, phone]
+                'INSERT INTO users (email, password, full_name, phone, role) VALUES (?, ?, ?, ?, ?)',
+                [email, hashedPassword, full_name, phone, userRole]
             );
             // Bước 5: Báo cáo thành công về cho Frontend
             res.status(201).json({

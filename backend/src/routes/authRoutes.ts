@@ -23,7 +23,7 @@ router.get('/me', authenticateJWT, (req: any, res: any) => {
 // Anh số 2 (authorizeRoles) soi chức danh. Ở đây ta quy định chỉ cho 'ADMIN' vào.
 router.get('/admin-only', authenticateJWT, authorizeRoles('ADMIN'), (req: any, res: any) => {
     res.status(200).json({
-        mesage: "Chào mừng ngài chủ tịch đã đến vvawn phòng!"
+        mesage: "Chào mừng ngài chủ tịch đã đến văn phòng!"
     })
 })
 export default router;
