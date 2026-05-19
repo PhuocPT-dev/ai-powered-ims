@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticateJWT, authorizeRoles } from "../middlewares/authMiddleware";
 import { JobController } from "../controllers/jobController";
+import { ApplicationController } from "../controllers/applicationController";
 
 const router = Router();
 
@@ -17,6 +18,12 @@ router.post(
 
 router.get('/', JobController.getAllJobs)
 
+// URL mẫu: /api/jobs/1/apply
+router.post(
+    '/:id/apply',
+    authenticateJWT,
+    authorizeRoles('CANDIDATE'),
+    ApplicationController.applyJob
+)
 export default router;
-
 

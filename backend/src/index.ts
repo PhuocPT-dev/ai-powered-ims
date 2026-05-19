@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import authRoutes from './routes/authRoutes';
 import jobRoutes from './routes/jobRouter';
+import applicationRoutes from './routes/applicationRoutes';
 import cors from 'cors';
 import './config/db';
 
@@ -23,6 +24,9 @@ app.get('/api/health', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 
 app.use('/api/jobs', jobRoutes);
+// Khai báo API Route quản lý đơn ứng tuyển
+app.use('/api/applications', applicationRoutes);
+
 //Khởi động server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
