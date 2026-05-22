@@ -33,12 +33,15 @@ async function initDB() {
         console.log("✅ Đã tạo thành công bảng 'jobs'.");
 
         // Tạo bảng Applications(đơn nộp CV)
+        await pool.query('DROP TABLE IF EXISTS applications;');
         const createApplicationsTableQuery = `
             CREATE TABLE IF NOT EXISTS applications (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 job_id INT NOT NULL,
                 candidate_id INT NOT NULL,
                 cv_url VARCHAR(500) NOT NULL,
+                ai_score INT,
+                ai_summary TEXT,
                 status ENUM('PENDING','REVIEWING','ACCEPTED','REJECTED') DEFAULT 'PENDING',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,

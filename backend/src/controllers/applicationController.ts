@@ -1,17 +1,17 @@
 import { Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddleware";
 import pool from "../config/db";
+import { PDFService } from "../utils/pdf";
+import { AIService } from "../utils/ai";
 
 
 export class ApplicationController {
 
-    //API nộp CV ứng tuyển
+    //API nộp CV ứng tuyển (CÓ TÍCH HỢP AI)
     static async applyJob(req: AuthRequest, res: Response): Promise<void> {
         try {
-            //lấy mã job từ trên thanh URL (ví dụ URL là /api/jobs/1/apply thì id = 1)
+            //lấy mã job từ trên thanh URL
             const jobId = req.params.id;
-
-            // Bóc tách và Kiểm tra Dữ liệu Form
             const { cv_url } = req.body;
 
             if (!cv_url) {
@@ -19,18 +19,33 @@ export class ApplicationController {
                 return;
             }
 
-            // Lấy thẻ ID của ứng viên từ trong thẻ token
             const candidateId = req.user?.id;
 
-            // 4. Lưu Đơn xin việc vào Database (Bảng applications)
+            // --- BẮT ĐẦU QUY TRÌNH CHẤM CV BẰNG AI ---
+            console.log(`Đang tải file PDF từ: ${cv_url}`);
+            
+            // 1. Tải và đọc chữ từ file PDF
+            const cvText = await PDFService.extractTextFromUrl(cv_url);
+            
+            let aiSummary = "AI không thể đọc được CV này.";
+            
+            // Nếu vắt được chữ, nhờ AI chấm điểm
+            if (cvText && cvText.length > 20) {
+                console.log("Đang nhờ AI phân tích CV...");
+                aiSummary = await AIService.analyzeCV(cvText);
+            }
+            // --- KẾT THÚC QUY TRÌNH AI ---
+
+            // 4. Lưu Đơn xin việc cùng với Lời nhận xét của AI vào Database
+            // Cột ai_score tạm thời để null, ta lưu lời nhận xét vào ai_summary
             await pool.query(
-                'INSERT INTO applications (job_id, candidate_id, cv_url) VALUES (?,?,?)',
-                [jobId, candidateId, cv_url]
+                'INSERT INTO applications (job_id, candidate_id, cv_url, ai_summary) VALUES (?,?,?,?)',
+                [jobId, candidateId, cv_url, aiSummary]
             )
-            // 
+            
             res.status(201).json({
                 status: "success",
-                message: "Nộp CV thành công!, Chúc bạn may mắn!"
+                message: "Nộp CV thành công! Giám đốc AI đã ghi nhận hồ sơ của bạn."
             })
         } catch (error) {
             console.error("Lỗi khi nộp CV:", error);
