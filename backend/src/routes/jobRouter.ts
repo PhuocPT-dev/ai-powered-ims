@@ -25,5 +25,12 @@ router.post(
     authorizeRoles('CANDIDATE'),
     ApplicationController.applyJob
 )
+router.get(
+    '/:id/applications', // Lấy toàn bộ CV nộp vào Job có ID tương ứng
+    authenticateJWT,
+    authorizeRoles('ADMIN', 'COORDINATOR'),
+    ApplicationController.getApplication
+)
+
 export default router;
 
