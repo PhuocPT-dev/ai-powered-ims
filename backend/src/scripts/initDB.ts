@@ -11,6 +11,7 @@ async function initDB() {
                 full_name VARCHAR(255) NOT NULL,
                 phone VARCHAR(20),
                 role ENUM ('ADMIN', 'COORDINATOR','MENTOR','CANDIDATE', 'INTERN') DEFAULT 'CANDIDATE',
+                is_active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )`;
         // Ra lệnh cho MysQQL thực thi
@@ -50,6 +51,22 @@ async function initDB() {
         `
         await pool.query(createApplicationsTableQuery);
         console.log("✅ Đã tạo thành công bảng 'applications'.");
+
+        //Tạo bảng intern_profiles (Hồ sơ Thực tập sinh)
+        const createInternProfilesTableQuery = `
+            CREATE TABLE IF NOT EXISTS intern_profiles (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                university VARCHAR(255),
+                major VARCHAR(255),
+                skills TEXT,
+                emergency_contact VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `;
+        await pool.query(createInternProfilesTableQuery);
+        console.log("✅ Đã tạo thành công bảng 'intern_profiles'.");
 
     } catch (error) {
         console.error("Lỗi khi tạo bảng ", error);

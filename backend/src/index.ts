@@ -3,6 +3,8 @@ import authRoutes from './routes/authRoutes';
 import jobRoutes from './routes/jobRouter';
 import applicationRoutes from './routes/applicationRoutes';
 import cors from 'cors';
+import internRoutes from './routes/internRoutes';
+import adminRoutes from './routes/adminRoutes';
 import './config/db';
 
 
@@ -26,6 +28,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 // Khai báo API Route quản lý đơn ứng tuyển
 app.use('/api/applications', applicationRoutes);
+
+//Khai báo API Route quản lý hồ sơ thực tập sinh
+app.use('/api/interns', internRoutes);
+
+app.use('/api/admin', adminRoutes);
 
 //Khởi động server
 app.listen(PORT, () => {

@@ -70,6 +70,12 @@ export class AuthController {
             // Bước 3: Lấy thông tin người dùng ra
             const user = users[0];
 
+            // Bước 3.5: Kiểm tra trạng thái tài khoản
+            if (user.is_active === 0) {
+                res.status(403).json({ message: "Tài khoản của bạn đã bị khóa, vui lòng liên hệ Admin!" });
+                return;
+            }
+
             // Bước 4: So sanh mật khẩu
             const isMatch = await PasswordUtil.compare(password, user.password);
 
