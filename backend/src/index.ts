@@ -7,6 +7,7 @@ import internRoutes from './routes/internRoutes';
 import adminRoutes from './routes/adminRoutes';
 import interviewRoutes from './routes/interviewRoutes';
 import trainingRoutes from './routes/trainingRoutes';
+import taskRoutes from './routes/taskRoutes';
 import './config/db';
 
 
@@ -39,6 +40,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/interviews', interviewRoutes);
 
 app.use('/api/trainings', trainingRoutes);
+
+app.use('/api/tasks', taskRoutes);
 
 //Khởi động server
 app.listen(PORT, () => {

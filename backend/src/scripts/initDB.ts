@@ -116,6 +116,25 @@ async function initDB() {
         await pool.query(createInternTrainingsTableQuery);
         console.log("✅ Đã tạo thành công bảng 'intern_trainings'.");
 
+        // Tạo bảng tasks 
+        const createTasksTableQuery = `
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                mentor_id INT NOT NULL,
+                intern_id INT NOT NULL,
+                deadline DATETIME,
+                status ENUM('TODO', 'IN_PROGRESS', 'DONE', 'EVALUATED') DEFAULT 'TODO',
+                score INT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                 FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE,
+                 FOREIGN KEY (intern_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+        `;
+        await pool.query(createTasksTableQuery);
+        console.log("✅ Đã tạo thành công bảng 'tasks'.");
+
     } catch (error) {
         console.error("Lỗi khi tạo bảng ", error);
     } finally {
