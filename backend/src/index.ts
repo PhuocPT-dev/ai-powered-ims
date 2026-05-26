@@ -8,6 +8,8 @@ import adminRoutes from './routes/adminRoutes';
 import interviewRoutes from './routes/interviewRoutes';
 import trainingRoutes from './routes/trainingRoutes';
 import taskRoutes from './routes/taskRoutes';
+import feedbackRoutes from './routes/feedbackRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
 import './config/db';
 
 
@@ -43,6 +45,9 @@ app.use('/api/trainings', trainingRoutes);
 
 app.use('/api/tasks', taskRoutes);
 
+app.use('/api/feedbacks', feedbackRoutes);
+
+app.use('/api/analytics', analyticsRoutes);
 //Khởi động server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

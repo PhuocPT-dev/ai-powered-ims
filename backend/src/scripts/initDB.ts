@@ -135,6 +135,23 @@ async function initDB() {
         await pool.query(createTasksTableQuery);
         console.log("✅ Đã tạo thành công bảng 'tasks'.");
 
+        // Tạo bảng feedbacks
+        const createFeedbacksTableQuery = `
+            CREATE TABLE IF NOT EXISTS feedbacks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                intern_id INT NOT NULL,
+                mentor_id INT NOT NULL,
+                rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                comment TEXT,
+                is_anonymous BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (intern_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `;
+        await pool.query(createFeedbacksTableQuery);
+        console.log("✅ Đã tạo thành công bảng 'feedbacks'.");
+
     } catch (error) {
         console.error("Lỗi khi tạo bảng ", error);
     } finally {
