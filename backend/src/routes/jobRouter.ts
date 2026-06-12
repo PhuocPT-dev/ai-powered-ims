@@ -2,6 +2,9 @@ import { Router } from "express";
 import { authenticateJWT, authorizeRoles } from "../middlewares/authMiddleware";
 import { JobController } from "../controllers/jobController";
 import { ApplicationController } from "../controllers/applicationController";
+import { validate } from '../middlewares/validateMiddleware';
+import { createJobSchema } from '../validators/jobValidator';
+
 
 const router = Router();
 
@@ -13,6 +16,7 @@ router.post(
     '/',
     authenticateJWT,
     authorizeRoles('ADMIN', 'HR'),
+    validate(createJobSchema),
     JobController.createJob
 )
 

@@ -7,6 +7,37 @@ const router = Router();
 // Khai báo URL là /register. Phương thức là POST (vì có gửi dữ liệu bảo mật).
 // Khi có ai gọi vào đây, Router sẽ chỉ tay nhờ hàm register của AuthController ra xử lý
 
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Đăng ký tài khoản người dùng mới
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: teo@gmail.com
+ *               password:
+ *                 type: string
+ *                 example: 123456
+ *               full_name:
+ *                 type: string
+ *                 example: Nguyễn Văn Tèo
+ *               role:
+ *                 type: string
+ *                 example: CANDIDATE
+ *     responses:
+ *       201:
+ *         description: Đăng ký thành công
+ */
+
+
 router.post('/register', AuthController.register);
 router.post('/login', AuthController.login);
 
@@ -18,9 +49,6 @@ router.get('/me', authenticateJWT, (req: any, res: any) => {
     })
 })
 
-// Chú ý: Ở đây ta kẹp tận 2 anh bảo vệ đứng nối tiếp nhau!
-// Anh số 1 (authenticateJWT) soi thẻ thật giả.
-// Anh số 2 (authorizeRoles) soi chức danh. Ở đây ta quy định chỉ cho 'ADMIN' vào.
 router.get('/admin-only', authenticateJWT, authorizeRoles('ADMIN'), (req: any, res: any) => {
     res.status(200).json({
         mesage: "Chào mừng ngài chủ tịch đã đến văn phòng!"
