@@ -1,17 +1,31 @@
 import { Request, Response, NextFunction } from 'express';
 
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-    err.statusCode = err.statusCode || 500;
-    err.status = err.status || 'error';
-
-    res.status(err.statusCode).json({
-        status: err.status,
-        message: err.message,
-
-        // chỉ in lỗi khi đang code trên máy
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    })
-
-
-
+interface AppErrorShape {
+    statusCode?: number;
+    status?: string;
+    message: string;
+    isOperational?: boolean;
+    stack?: string;
 }
+
+export const errorHandler = (
+    err: AppErrorShape,
+    req: Request,
+    res: Response,
+    next: NextFunction
+): void => {
+    const statusCode = err.statusCode || 500;
+    const status = err.status || 'error';
+
+    // Log lỗi server (5xx) ra Console để dễ dàng debug
+    if (statusCode >= 500) {
+        console.error(`[ERROR ${statusCode}] ${req.method} ${req.path}:`, err.stack || err.message);
+    }
+
+    res.status(statusCode).json({
+        status,
+        message: err.message,
+        // Chỉ in chi tiết lỗi (stack) khi đang code trên máy (development)
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+};

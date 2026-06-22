@@ -1,9 +1,16 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 
+export interface JwtPayload {
+    id: number;
+    role: 'ADMIN' | 'HR' | 'COORDINATOR' | 'MENTOR' | 'INTERN' | 'CANDIDATE';
+    iat?: number;
+    exp?: number;
+}
+
 // mở rộng cấu trúc Request của Express để nó có cái túi 'user' đựng thông tin khách
 export interface AuthRequest extends Request {
-    user?: any;
+    user?: JwtPayload;
 }
 
 export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction): void => {
@@ -18,8 +25,11 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
     const token = authHeader.split(' ')[1];
 
     try {
-        const secretKey = process.env.JWT_SECRET || 'fallback_secret';
-        const decoded = jwt.verify(token, secretKey);
+        if (!process.env.JWT_SECRET) {
+            throw new Error('FATAL: JWT_SECRET is not defined in environment variables');
+        }
+        const secretKey = process.env.JWT_SECRET;
+        const decoded = jwt.verify(token, secretKey) as JwtPayload;
         // 4. Vượt qua bài soi! Thẻ là THẬT.
         // Lấy thông tin in trên thẻ (id, role) nhét vào túi req.user của khách. 
         // Để lát nữa đi vào Controller, các phòng ban biết khách này là ai.
