@@ -12,9 +12,13 @@ import * as z from "zod";
 const registerSchema = z.object({
     full_name: z.string().min(2, { message: "Tên phải có ít nhất 2 kí tự" }),
     email: z.string().email({ message: "Vui lòng nhập đúng định dạng Email!" }),
-    password: z.string().min(6, { message: "Mật khẩu phải có ít nhất 6 kí tự" }),
+    password: z.string().min(8, { message: "Mật khẩu phải có ít nhất 8 kí tự" }),
+    password_confirm: z.string().min(8, { message: "Mật khẩu phải có ít nhất 8 kí tự" }),
     phone: z.string().optional()
-})
+}).refine((data) => data.password === data.password_confirm, {
+    message: "Mật khẩu xác nhận không khớp!",
+    path: ["password_confirm"]
+});
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
@@ -23,7 +27,7 @@ export default function RegisterPage() {
 
     const form = useForm<RegisterFormValues>({
         resolver: zodResolver(registerSchema),
-        defaultValues: { full_name: "", email: "", password: "", phone: "" },
+        defaultValues: { full_name: "", email: "", password: "", password_confirm: "", phone: "" },
     })
 
     const onSubmitRegister = async (data: RegisterFormValues) => {
@@ -67,6 +71,13 @@ export default function RegisterPage() {
                             <Input id="password" type="password" placeholder="******" {...form.register("password")} />
                             {form.formState.errors.password && (
                                 <p className="text-sm font-medium text-red-500">{form.formState.errors.password.message}</p>
+                            )}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password_confirm" className="font-semibold text-zinc-700">Xác nhận Mật khẩu (*)</Label>
+                            <Input id="password_confirm" type="password" placeholder="******" {...form.register("password_confirm")} />
+                            {form.formState.errors.password_confirm && (
+                                <p className="text-sm font-medium text-red-500">{form.formState.errors.password_confirm.message}</p>
                             )}
                         </div>
                         <div className="space-y-2">

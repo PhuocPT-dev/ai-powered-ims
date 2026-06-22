@@ -6,8 +6,19 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { jobApi } from "@/api/job.api";
 
+interface Job {
+    id: number;
+    title: string;
+    description: string;
+    salary: number;
+    location: string;
+    department: string;
+    status: 'OPEN' | 'CLOSED';
+    created_at: string;
+}
+
 export default function JobManagement() {
-    const [jobs, setJobs] = useState<any[]>([]);
+    const [jobs, setJobs] = useState<Job[]>([]);
     const navigate = useNavigate();
 
     // Tách hàm fetchJobs ra ngoài để tái sử dụng
@@ -24,6 +35,17 @@ export default function JobManagement() {
     useEffect(() => {
         fetchJobs();
     }, []);
+
+    const handleDeleteJob = async (jobId: number) => {
+        if (!confirm("Bạn có chắc chắn muốn xóa tin tuyển dụng này?")) return;
+        try {
+            await jobApi.deleteJob(jobId);
+            toast.success("Xóa tin tuyển dụng thành công!");
+            fetchJobs(); // Cập nhật lại UI sau khi xóa
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Lỗi khi xóa tin tuyển dụng!");
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -67,7 +89,7 @@ export default function JobManagement() {
                                         onClick={() => navigate("/dashboard/jobs/" + job.id)}>
                                         Xem CV
                                     </Button>
-                                    <Button variant="destructive" size="sm">Xóa</Button>
+                                    <Button variant="destructive" size="sm" onClick={() => handleDeleteJob(job.id)}>Xóa</Button>
                                 </TableCell>
                             </TableRow>
                         ))}

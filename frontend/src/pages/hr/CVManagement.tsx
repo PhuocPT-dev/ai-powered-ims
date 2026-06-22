@@ -6,11 +6,21 @@ import { Button } from "@/components/ui/button";
 import { applicationApi } from "@/api/application.api";
 import { toast } from "sonner";
 
+interface Application {
+    id: number;
+    job_id: number;
+    candidate_id: number;
+    cv_url: string;
+    ai_summary: string;
+    status: 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
+    created_at: string;
+}
+
 export default function CVManagement() {
     // 💡 KIẾN THỨC MỚI: Dùng useParams để Lấy cái ID của Job từ trên thanh URL xuống (Vd: URL là /jobs/5 thì id = 5)
     const { id } = useParams();
 
-    const [applications, setApplications] = useState<any[]>([]);
+    const [applications, setApplications] = useState<Application[]>([]);
 
     const fetchApplications = async () => {
         try {
@@ -65,7 +75,7 @@ export default function CVManagement() {
                                     </a>
                                 </TableCell>
                                 <TableCell className="text-sm text-gray-600 italic line-clamp-2" title={app.ai_summary}>
-                                    "{app.ai_summary}"
+                                    {app.ai_summary}
                                 </TableCell>
                                 {/* Badge đổi màu tùy theo trạng thái */}
                                 <TableCell>

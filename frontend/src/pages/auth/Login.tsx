@@ -10,11 +10,12 @@ import { authApi } from "@/api/auth.api";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useAuthStore } from "@/store/authStore";
 
 // [BƯỚC 1]: Tạo cái "Khuôn đúc" Zod để ép người dùng nhập đúng chuẩn
 const loginSchema = z.object({
     email: z.string().email({ message: "Ê! Nhập sai định dạng Email rồi (phải có @)!" }),
-    password: z.string().min(6, { message: "Mật khẩu bảo mật kém quá, phải dài ít nhất 6 ký tự!" }),
+    password: z.string().min(1, { message: "Vui lòng nhập mật khẩu!" }),
 });
 
 // Dịch cái khuôn đúc sang ngôn ngữ của TypeScript (Để chặn bug)
@@ -23,6 +24,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
     const navigate = useNavigate();
+    const { setAuth } = useAuthStore();
 
     // [BƯỚC 2]: Khởi động bộ máy React Hook Form và nhét cái Khuôn đúc Zod vào trong
     const form = useForm<LoginFormValues>({
@@ -39,9 +41,8 @@ export default function LoginPage() {
             if (responseData.status === "success") {
                 toast.success("Đăng nhập thành công! Đang vào hệ thống...");
 
-                // Nhận lấy chìa khóa (Token) từ Backend và cất giấu cẩn thận vào két sắt (LocalStorage) của trình duyệt
-                localStorage.setItem("token", responseData.data.token);
-                localStorage.setItem("userRole", responseData.data.user.role);
+                // Cất token và user vào Zustand Store (đã tích hợp tự động lưu LocalStorage)
+                setAuth(responseData.data.token, responseData.data.user);
 
                 const role = responseData.data.user.role;
 

@@ -4,9 +4,9 @@ import RegisterPage from './pages/auth/Register';
 import DashboardLayout from './layouts/DashboardLayout'; // Lấy cái vỏ Tivi
 import DashboardOverview from './pages/hr/DashboardOverview'; // Lấy cái ruột
 import JobManagement from './pages/hr/JobManagement';
+import TaskBoard from './pages/intern/TaskBoard';
 import CVManagement from './pages/hr/CVManagement';
-
-
+import ProtectedRoute from './components/ProtectedRoute';
 import CareersPage from './pages/public/Careers';
 import { Toaster } from 'sonner';
 
@@ -30,8 +30,17 @@ function App() {
         <Route path="/dashboard" element={<DashboardLayout />} >
           {/* Cổng để nhét ruột vào */}
           <Route index element={<DashboardOverview />} />
-          <Route path="jobs" element={<JobManagement />} />
-          <Route path="jobs/:id" element={<CVManagement />} />
+          {/* 🔒ProtectedRoute bảo vệ khu vực HR 🔒 */}
+          <Route element={<ProtectedRoute allowedRoles={['HR', 'ADMIN']} />}>
+            <Route path="jobs" element={<JobManagement />} />
+            <Route path="jobs/:id" element={<CVManagement />} />
+          </Route>
+
+          {/* 🛡️ CỬA CHUYÊN DỤNG CHO TASK BOARD 🛡️ */}
+          {/* Chỉ INTERN, MENTOR, ADMIN mới được bước vào đây */}
+          <Route element={<ProtectedRoute allowedRoles={['INTERN', 'MENTOR', 'ADMIN']} />}>
+            <Route path="tasks" element={<TaskBoard />} />
+          </Route>
 
         </Route>
       </Routes>
