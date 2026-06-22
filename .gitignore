@@ -5,6 +5,7 @@ backend/node_modules/
 # Bỏ qua các file chứa Mật Khẩu (Bảo mật tuyệt đối)
 .env
 backend/.env
+.env.docker
 
 # Bỏ qua file rác của Hệ điều hành
 .DS_Store
