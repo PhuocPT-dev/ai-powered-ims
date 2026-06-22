@@ -15,7 +15,7 @@ export class EmailService {
         try {
             // cấu hình người gửi, tiêu đề, nội dung
             const mailOptions = {
-                from: `"Phòng nhân sự IMS" <${process.env.EMAIL_USER}`,
+                from: `"Phòng nhân sự IMS" <${process.env.EMAIL_USER}>`,
                 to: to, //Người nhận
                 subject: subject, // Tiêu đề
                 text: text // Nội dung 

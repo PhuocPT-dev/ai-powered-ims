@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { TaskController } from '../controllers/taskController';
 import { authenticateJWT, authorizeRoles } from '../middlewares/authMiddleware';
+
 const router = Router();
-// Giao Task
+
+// 1. MENTOR GIAO TASK 
 router.post(
     '/',
     authenticateJWT,
@@ -10,25 +12,28 @@ router.post(
     TaskController.createTask
 );
 
+// 2. INTERN XEM BẢNG CÔNG VIỆC 
 router.get(
-    '/intern/:internId',
+    '/my-tasks',
     authenticateJWT,
-    authorizeRoles('ADMIN', 'MENTOR', 'INTERN'),
-    TaskController.getTasksByIntern
+    authorizeRoles('INTERN'),
+    TaskController.getMyTasks
 );
 
-// Lộ trình 3: Cập nhật tiến độ (Chỉ dành riêng cho Intern tự bấm)
-router.put(
-    '/:taskId/status',
+// 3. INTERN KÉO THẢ TASK SANG CỘT KHÁC 
+router.patch(
+    '/:id/status',
     authenticateJWT,
     authorizeRoles('INTERN'),
     TaskController.updateTaskStatus
 );
-//Mentor chấm điểm
-router.put(
-    '/:taskId/evaluate',
+
+// 4. MENTOR CHẤM ĐIỂM BÀI LÀM
+router.patch(
+    '/:id/evaluate',
     authenticateJWT,
     authorizeRoles('ADMIN', 'MENTOR'),
     TaskController.evaluateTask
-)
+);
+
 export default router;

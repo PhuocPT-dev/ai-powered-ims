@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { AuthController } from "../controllers/authController";
-import { authenticateJWT } from '../middlewares/authMiddleware';
-import { authorizeRoles } from '../middlewares/authMiddleware';
+import { authenticateJWT, authorizeRoles } from '../middlewares/authMiddleware';
+import { validate } from '../middlewares/validateMiddleware';
+import { registerSchema, loginSchema } from '../validators/authValidator';
 
 const router = Router();
 // Khai báo URL là /register. Phương thức là POST (vì có gửi dữ liệu bảo mật).
@@ -25,33 +26,36 @@ const router = Router();
  *                 example: teo@gmail.com
  *               password:
  *                 type: string
- *                 example: 123456
+ *                 example: MySecure@123
+ *                 minLength: 8
+ *               password_confirm:
+ *                 type: string
+ *                 example: MySecure@123
+ *                 minLength: 8
  *               full_name:
  *                 type: string
  *                 example: Nguyễn Văn Tèo
- *               role:
- *                 type: string
- *                 example: CANDIDATE
  *     responses:
  *       201:
  *         description: Đăng ký thành công
  */
 
 
-router.post('/register', AuthController.register);
-router.post('/login', AuthController.login);
+import rateLimit from 'express-rate-limit';
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 phút
+    max: 5, // Tối đa 5 lần thử
+    message: { message: 'Quá nhiều lần thử đăng nhập. Vui lòng thử lại sau 15 phút.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+router.post('/register', validate(registerSchema), AuthController.register);
+router.post('/login', loginLimiter, validate(loginSchema), AuthController.login);
 
 // Chú ý: Ta kẹp anh bảo vệ 'authenticateJWT' đứng chắn giữa cái URL và cái Controller!
-router.get('/me', authenticateJWT, (req: any, res: any) => {
-    res.status(200).json({
-        message: "Bạn đã lọt qua chốt kiểm tra an ninh",
-        thong_tin_cua_ban: req.user
-    })
-})
+router.get('/me', authenticateJWT, AuthController.getCurrentUser);
 
-router.get('/admin-only', authenticateJWT, authorizeRoles('ADMIN'), (req: any, res: any) => {
-    res.status(200).json({
-        mesage: "Chào mừng ngài chủ tịch đã đến văn phòng!"
-    })
-})
+
 export default router;

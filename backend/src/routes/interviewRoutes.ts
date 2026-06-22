@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { authenticateJWT, authorizeRoles } from "../middlewares/authMiddleware";
 import { InterviewController } from "../controllers/interviewController";
+import { validate } from "../middlewares/validateMiddleware";
+import { scheduleInterviewSchema } from "../validators/interviewValidator";
 
 const router = Router();
 
@@ -8,6 +10,7 @@ const router = Router();
 router.post('/schedule',
     authenticateJWT,
     authorizeRoles('COORDINATOR', 'ADMIN'),
+    validate(scheduleInterviewSchema),
     InterviewController.scheduleInterview
 );
 

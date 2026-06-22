@@ -1,4 +1,4 @@
-const pdfParse = require('pdf-parse');
+import pdfParse from 'pdf-parse';
 
 export class PDFService {
     // Hàm này nhận vào một đường link web (.pdf) và trả về toàn bộ chữ bên trong

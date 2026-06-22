@@ -22,6 +22,13 @@ router.post(
 
 router.get('/', JobController.getAllJobs)
 
+router.delete(
+    '/:id',
+    authenticateJWT,
+    authorizeRoles('ADMIN', 'HR'),
+    JobController.deleteJob
+)
+
 // URL mẫu: /api/jobs/1/apply
 router.post(
     '/:id/apply',

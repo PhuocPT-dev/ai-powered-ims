@@ -1,129 +1,72 @@
-import { Request, Response } from "express";
-import pool from "../config/db";
+import { Response } from "express";
+import { AuthRequest } from "../middlewares/authMiddleware";
+import { asyncHandler } from "../utils/asyncHandler";
+import { AppError } from "../utils/AppError";
+import { TaskService } from "../service/taskService";
 
 export class TaskController {
-    // MENTOR GIAO TASK CHO INTERN
-    static async createTask(req: Request, res: Response): Promise<void> {
-        try {
-            const { title, description, mentor_id, intern_id, deadline } = req.body;
-            // 
-            const [users]: any = await pool.query(
-                'SELECT id, role FROM users WHERE id IN (?, ?)',
-                [mentor_id, intern_id]
-            );
-            let isMentorValid = false;
-            let isInternValid = false;
 
-            for (let user of users) {
-                if (user.id === mentor_id && user.role === 'MENTOR') isMentorValid = true;
-                if (user.id === intern_id && user.role === 'INTERN') isInternValid = true;
-            }
+    // 1. MENTOR GIAO TASK CHO INTERN
+    static createTask = asyncHandler(async (req: AuthRequest, res: Response) => {
+        // 🛡️ BẢO MẬT: Lấy ID của Mentor từ chính Token đăng nhập (Tuyệt đối không tin req.body)
+        const mentorId = req.user?.id;
+        const { title, description, intern_id, deadline } = req.body;
 
-            // Kiểm tra MENTOR và INTERN hợp lệ không
-            if (!isMentorValid || !isInternValid) {
-                res.status(400).json({ message: "Bảo vệ: Lỗi phân quyền! Chỉ Mentor mới được phép giao việc cho Intern!" });
-                return;
-            }
-            // Hợp lệ đi tiếp
-            const [result]: any = await pool.query(
-                `INSERT INTO tasks (title, description, mentor_id, intern_id, deadline)
-                VALUES (?,?,?,?,?)`,
-                [title, description, mentor_id, intern_id, deadline]
-            );
-            res.status(201).json({
-                status: "success",
-                message: "Đã giao Task cho Intern thành công!",
-                taskId: result.insertId
-            })
-        } catch (error) {
-            console.error("Lỗi giao task:", error);
-            res.status(500).json({ message: "Lỗi hệ thống" });
-        }
-    }
-    // Xem danh sách Task (Intern xem)
-    static async getTasksByIntern(req: Request, res: Response): Promise<void> {
-        try {
-            const internId = req.params.internId;
+        if (!mentorId) throw new AppError("Không tìm thấy thẻ định danh Mentor!", 401);
+        if (!intern_id || !title) throw new AppError("Thiếu thông tin bắt buộc!", 400);
 
-            // Viết truy vấn SELECT lấy công việc
-            const [tasks]: any = await pool.query(
-                `SELECT t.id, t.title, t.description, t.status, t.created_at, u.full_name AS mentor_name 
-                FROM tasks t
-                JOIN users u ON t.mentor_id = u.id
-                WHERE t.intern_id = ?
-                ORDER BY t.created_at DESC`,
-                [internId]
-            );
 
-            // Trả về dữ liệu cho Frontend
-            res.status(200).json({
-                status: "success",
-                message: "Lấy danh sách công việc thành công!",
-                data: tasks
-            });
-        } catch (error) {
-            console.error("Lỗi lấy danh sách task:", error);
-            res.status(500).json({ message: "Lỗi hệ thống" });
-        }
-    }
-    // Intern Cập nhật trạng thái task
-    static async updateTaskStatus(req: Request, res: Response): Promise<void> {
-        try {
-            const taskId = req.params.taskId;
-            const { status } = req.body;
+        const taskId = await TaskService.createTask(mentorId, intern_id, title, description, deadline);
 
-            // Chỉ cho phép Intern thay đổi trạng thái Task từ "TODO" sang "IN_PROGRESS" hoặc "DONE"
-            if (status === 'EVALUATED') {
-                res.status(403).json({ message: "Ăn gian hả? Intern không có quyền tự chấm điểm bài làm!" });
-                return;
-            }
+        res.status(201).json({
+            status: "success",
+            message: "Đã giao Task thành công!",
+            taskId: taskId
+        });
+    });
 
-            const [result]: any = await pool.query(
-                `UPDATE tasks SET status = ? WHERE id = ?`,
-                [status, taskId]
-            );
+    // 2. INTERN XEM BẢNG CÔNG VIỆC CỦA MÌNH
+    static getMyTasks = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const internId = req.user?.id; // Lấy từ Token của người đang đăng nhập
+        if (!internId) throw new AppError("Không xác định được danh tính Intern!", 401);
 
-            if (result.affectedRows === 0) {
-                res.status(404).json({ message: "Không tìm thấy Task!" });
-                return;
-            }
-            res.status(200).json({
-                status: "success",
-                message: "Cập nhật trạng thái task thành công!",
-                data: result
-            });
-        } catch (error) {
-            console.error("Lỗi cập nhật trạng thái task:", error);
-            res.status(500).json({ message: "Lỗi hệ thống" });
-        }
-    }
-    //Mentor đánh giá task
-    static async evaluateTask(req: Request, res: Response): Promise<void> {
-        try {
-            const taskId = req.params.taskId;
-            const { score } = req.body;
-            // 
-            if (score < 0 || score > 10) {
-                res.status(400).json({ message: "Ràng buộc dữ liệu: Điểm số phải nằm trong khoảng từ 0 đến 10!" });
-                return;
-            }
-            const [result]: any = await pool.query(
-                `UPDATE tasks SET status = 'EVALUATED', score = ? WHERE id = ?`,
-                [score, taskId]
-            );
-            if (result.affectedRows === 0) {
-                res.status(404).json({ message: "Không tìm thấy Task để chấm điểm!" });
-                return;
-            }
-            res.status(200).json({
-                status: "success",
-                message: `Đã nghiệm thu và chấm ${score} điểm cho Task này!`,
-                data: result
-            });
-        } catch (error) {
-            console.error("Lỗi chấm điểm task:", error);
-            res.status(500).json({ message: "Lỗi hệ thống" });
-        }
-    }
+        const tasks = await TaskService.getTasksByIntern(internId);
 
+        res.status(200).json({
+            status: "success",
+            data: tasks
+        });
+    });
+
+    // 3. INTERN BÁO CÁO TIẾN ĐỘ (Kéo thả thẻ Task)
+    static updateTaskStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const internId = req.user?.id;
+        const taskId = req.params.id as string; // Lấy ID của Task trên thanh URL (Ví dụ: /api/tasks/5/status)
+        const { status } = req.body;
+
+        if (!internId) throw new AppError("Không xác định được danh tính!", 401);
+
+        await TaskService.updateTaskStatus(taskId, internId, status);
+
+        res.status(200).json({
+            status: "success",
+            message: "Cập nhật trạng thái thành công!"
+        });
+    });
+
+    // 4. MENTOR CHẤM ĐIỂM BÀI LÀM
+    static evaluateTask = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const mentorId = req.user?.id;
+        const taskId = req.params.id as string;
+        const { score } = req.body;
+
+        if (!mentorId) throw new AppError("Không xác định được danh tính!", 401);
+
+        await TaskService.evaluateTask(taskId, mentorId, score);
+
+        res.status(200).json({
+            status: "success",
+            message: `Đã nghiệm thu và chấm ${score} điểm!`
+        });
+    });
 }
