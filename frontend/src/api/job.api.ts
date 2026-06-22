@@ -15,6 +15,11 @@ export const jobApi = {
     createJob: async (jobData: { title: string, description: string, salary: string, location: string }) => {
         const response = await apiClient.post("/jobs", jobData);
         return response.data
+    },
+
+    deleteJob: async (jobId: number) => {
+        const response = await apiClient.delete(`/jobs/${jobId}`);
+        return response.data;
     }
 
 }
