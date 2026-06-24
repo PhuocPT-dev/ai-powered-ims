@@ -13,7 +13,6 @@ export class TaskController {
         const { title, description, intern_id, deadline } = req.body;
 
         if (!mentorId) throw new AppError("Không tìm thấy thẻ định danh Mentor!", 401);
-        if (!intern_id || !title) throw new AppError("Thiếu thông tin bắt buộc!", 400);
 
 
         const taskId = await TaskService.createTask(mentorId, intern_id, title, description, deadline);
@@ -67,6 +66,19 @@ export class TaskController {
         res.status(200).json({
             status: "success",
             message: `Đã nghiệm thu và chấm ${score} điểm!`
+        });
+    });
+
+    // 5. MENTOR XEM BẢNG CÔNG VIỆC ĐÃ GIAO
+    static getMentorTasks = asyncHandler<AuthRequest>(async (req, res) => {
+        const mentorId = req.user?.id;
+        if (!mentorId) throw new AppError("Không xác định được danh tính Mentor!", 401);
+
+        const tasks = await TaskService.getTasksByMentor(mentorId);
+
+        res.status(200).json({
+            status: "success",
+            data: tasks
         });
     });
 }

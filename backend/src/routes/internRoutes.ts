@@ -5,10 +5,10 @@ import { InternController } from "../controllers/internController";
 
 const router = Router();
 
-// Lớp kẹp Middleware: Chỉ có HR hoặc ADMIN mới có đặc quyền nhập hồ sơ
+// Lớp kẹp Middleware: Chỉ bản thân INTERN mới được quyền tự tạo hồ sơ của mình
 router.post('/profile',
     authenticateJWT,
-    authorizeRoles('ADMIN', 'HR'),
+    authorizeRoles('INTERN'),
     InternController.createProfile
 );
 
@@ -24,6 +24,13 @@ router.put('/profile/:userId',
     authenticateJWT,
     authorizeRoles('ADMIN', 'HR'),
     InternController.updateProfile
+);
+
+// Lấy danh sách toàn bộ Intern (Cho Mentor giao việc)
+router.get('/',
+    authenticateJWT,
+    authorizeRoles('ADMIN', 'HR', 'MENTOR'),
+    InternController.getAllInterns
 );
 
 export default router;

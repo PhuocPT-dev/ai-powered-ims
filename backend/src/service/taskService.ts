@@ -21,6 +21,18 @@ export class TaskService {
         return rows;
     }
 
+    static async getTasksByMentor(mentorId: number) {
+        const [rows] = await pool.query(
+            `SELECT t.id, t.title, t.description, t.deadline, t.status, t.score, t.intern_id, u.full_name as intern_name 
+             FROM tasks t
+             JOIN users u ON t.intern_id = u.id
+             WHERE t.mentor_id = ? 
+             ORDER BY t.created_at DESC`,
+            [mentorId]
+        );
+        return rows;
+    }
+
     static async updateTaskStatus(taskId: string, internId: number, newStatus: string) {
         const validStatuses = ['TODO', 'IN_PROGRESS', 'DONE'];
         if (!validStatuses.includes(newStatus)) {

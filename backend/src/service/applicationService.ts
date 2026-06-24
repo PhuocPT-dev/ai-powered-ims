@@ -19,11 +19,9 @@ export class ApplicationService {
 
     //đưa cho AI chấm, rồi lưu vào Database
     static async applyJob(jobId: string, candidateId: number, cv_url: string) {
-        console.log(`Đang tải file PDF từ: ${cv_url}`);
         const cvText = await PDFService.extractTextFromUrl(cv_url);
         let aiSummary = "AI không thể đọc được CV này.";
         if (cvText && cvText.length > 20) {
-            console.log("Đang nhờ AI phân tích CV...");
             aiSummary = await AIService.analyzeCV(cvText);
         }
         const [result]: any = await pool.query(

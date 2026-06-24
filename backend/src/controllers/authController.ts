@@ -1,58 +1,44 @@
 import { Request, Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddleware";
-import pool from "../config/db";
 import { PasswordUtil } from '../utils/password';
 import jwt from "jsonwebtoken";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
+import { AuthService } from "../service/authService";
 
 export class AuthController {
-    // Hàm xử lý đăng ký (Dùng static gỏi thẳng từ class mà không cần tạo Object)
     static register = asyncHandler(async (req: Request, res: Response) => {
         const { email, password, full_name, phone } = req.body;
 
-        const [existingUsers]: any = await pool.query(
-            'SELECT id FROM users WHERE email = ?', [email]
-        );
-        if (existingUsers.length > 0) {
+        const existingUser = await AuthService.getUserByEmail(email);
+        if (existingUser) {
             throw new AppError("Email này đã được sử dụng!", 400);
         }
 
         const hashedPassword = await PasswordUtil.hash(password);
-
-        // BẢO MẬT: Luôn ép cứng Role là CANDIDATE khi đăng ký (Phòng chống Hacker tự thăng cấp ADMIN)
         const userRole = 'CANDIDATE';
-        await pool.query(
-            'INSERT INTO users (email, password, full_name, phone, role) VALUES (?, ?, ?, ?, ?)',
-            [email, hashedPassword, full_name, phone, userRole]
-        );
+        
+        await AuthService.createUser(email, hashedPassword, full_name, phone, userRole);
+        
         res.status(201).json({
             status: "success",
             message: "Đăng ký thành công!"
         });
     });
 
-    //Hàm xử lý Đăng nhập
     static login = asyncHandler(async (req: Request, res: Response) => {
         const { email, password } = req.body;
 
-        const [users]: any = await pool.query(
-            'SELECT id, email, password, full_name, role, is_active FROM users WHERE email = ?', 
-            [email]
-        );
-
-        if (users.length === 0) {
+        const user = await AuthService.getUserByEmail(email);
+        if (!user) {
             throw new AppError("Email hoặc mật khẩu không chính xác!", 401);
         }
-
-        const user = users[0];
 
         if (user.is_active === 0) {
             throw new AppError("Tài khoản của bạn đã bị khóa, vui lòng liên hệ Admin!", 403);
         }
 
         const isMatch = await PasswordUtil.compare(password, user.password);
-
         if (!isMatch) {
             throw new AppError("Email hoặc mật khẩu không chính xác!", 401);
         }
@@ -60,11 +46,10 @@ export class AuthController {
         if (!process.env.JWT_SECRET) {
             throw new Error('FATAL: JWT_SECRET is not defined in environment variables');
         }
-        const secretKey = process.env.JWT_SECRET;
 
         const token = jwt.sign(
             { id: user.id, role: user.role },
-            secretKey,
+            process.env.JWT_SECRET,
             { expiresIn: '1d' }
         );
 
@@ -82,12 +67,13 @@ export class AuthController {
             }
         });
     });
+
     static getCurrentUser = asyncHandler(async (req: AuthRequest, res: Response) => {
-        const [users]: any = await pool.query(
-            'SELECT id, email, full_name, role FROM users WHERE id = ?',
-            [req.user?.id]
-        );
-        res.status(200).json({ status: 'success', data: users[0] });
+        if (!req.user?.id) throw new AppError("Không tìm thấy thông tin đăng nhập", 401);
+        
+        const user = await AuthService.getUserById(req.user.id);
+        if (!user) throw new AppError("Không tìm thấy người dùng", 404);
+        
+        res.status(200).json({ status: 'success', data: user });
     });
 }
-

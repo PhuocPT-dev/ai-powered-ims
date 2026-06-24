@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { TaskController } from '../controllers/taskController';
 import { authenticateJWT, authorizeRoles } from '../middlewares/authMiddleware';
+import { validate } from '../middlewares/validateMiddleware';
+import { createTaskSchema, updateTaskStatusSchema, evaluateTaskSchema } from '../validators/taskValidator';
 
 const router = Router();
 
@@ -9,6 +11,7 @@ router.post(
     '/',
     authenticateJWT,
     authorizeRoles('ADMIN', 'MENTOR'),
+    validate(createTaskSchema),
     TaskController.createTask
 );
 
@@ -25,6 +28,7 @@ router.patch(
     '/:id/status',
     authenticateJWT,
     authorizeRoles('INTERN'),
+    validate(updateTaskStatusSchema),
     TaskController.updateTaskStatus
 );
 
@@ -33,7 +37,16 @@ router.patch(
     '/:id/evaluate',
     authenticateJWT,
     authorizeRoles('ADMIN', 'MENTOR'),
+    validate(evaluateTaskSchema),
     TaskController.evaluateTask
+);
+
+// 5. MENTOR XEM DANH SÁCH TASK ĐÃ GIAO
+router.get(
+    '/mentor-tasks',
+    authenticateJWT,
+    authorizeRoles('ADMIN', 'MENTOR'),
+    TaskController.getMentorTasks
 );
 
 export default router;
