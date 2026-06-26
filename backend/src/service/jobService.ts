@@ -24,10 +24,10 @@ export class JobService {
         const offset = (page - 1) * limit;
         // BẢO MẬT: Không dùng SELECT * để tối ưu tốc độ mạng và bảo mật
         const [jobs]: any = await pool.query(
-            'SELECT id, title, description, salary, location, employer_id, status, created_at FROM jobs ORDER BY created_at DESC LIMIT ? OFFSET ?',
+            "SELECT id, title, description, salary, location, employer_id, status, created_at FROM jobs WHERE status = 'OPEN' ORDER BY created_at DESC LIMIT ? OFFSET ?",
             [limit, offset]
         );
-        const [[{ total }]]: any = await pool.query('SELECT COUNT(*) as total FROM jobs');
+        const [[{ total }]]: any = await pool.query("SELECT COUNT(*) as total FROM jobs WHERE status = 'OPEN'");
         return { jobs, total, page, limit };
     }
 

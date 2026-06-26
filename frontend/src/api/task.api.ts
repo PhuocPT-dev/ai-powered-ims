@@ -34,5 +34,11 @@ export const taskApi = {
     evaluateTask: async (taskId: number, score: number) => {
         const response = await apiClient.patch(`/tasks/${taskId}/evaluate`, { score });
         return response.data;
+    },
+
+    // MENTOR: Xem danh sách task đã giao
+    getMentorTasks: async () => {
+        const response = await apiClient.get<{ status: string; data: (Task & { intern_name: string })[] }>("/tasks/mentor-tasks");
+        return response.data;
     }
 }

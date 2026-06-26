@@ -1,10 +1,15 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddleware";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { TrainingService } from "../service/trainingService";
 
 export class TrainingController {
+    static getAllPrograms = asyncHandler(async (req: Request, res: Response) => {
+        const programs = await TrainingService.getAllPrograms();
+        res.status(200).json({ status: "success", data: programs });
+    });
+
     static createProgram = asyncHandler(async (req: AuthRequest, res: Response) => {
         const coordinator_id = req.user?.id;
         if (!coordinator_id) throw new AppError("Không xác định được danh tính", 401);
@@ -49,5 +54,33 @@ export class TrainingController {
             status: "success",
             message: "Đã thêm Thực tập sinh vào khóa học thành công!"
         });
+    });
+
+    static getProgramById = asyncHandler(async (req: Request, res: Response) => {
+        const programId = req.params.id as string;
+        const program = await TrainingService.getProgramById(programId);
+        if (!program) throw new AppError("Không tìm thấy khóa học", 404);
+        res.status(200).json({ status: "success", data: program });
+    });
+
+    static getProgramMembers = asyncHandler(async (req: Request, res: Response) => {
+        const programId = req.params.id as string;
+        const members = await TrainingService.getProgramMembers(programId);
+        res.status(200).json({ status: "success", data: members });
+    });
+
+    static updateInternStatus = asyncHandler(async (req: Request, res: Response) => {
+        const internTrainingId = req.params.id as string;
+        const { status } = req.body;
+        const updated = await TrainingService.updateInternStatus(internTrainingId, status);
+        if (!updated) throw new AppError("Không tìm thấy bản ghi điểm danh!", 404);
+        res.status(200).json({ status: "success", message: `Đã cập nhật tiến độ thành ${status}` });
+    });
+
+    static deleteProgram = asyncHandler(async (req: Request, res: Response) => {
+        const programId = req.params.id as string;
+        const deleted = await TrainingService.deleteProgram(programId);
+        if (!deleted) throw new AppError("Không tìm thấy khóa học", 404);
+        res.status(200).json({ status: "success", message: "Đã xóa khóa học" });
     });
 }

@@ -3,6 +3,7 @@ import { AuthRequest } from "../middlewares/authMiddleware";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { InternService } from "../service/internService";
+import { AIService } from "../utils/ai";
 
 export class InternController {
     static createProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -54,5 +55,43 @@ export class InternController {
     static getAllInterns = asyncHandler(async (req: Request, res: Response) => {
         const interns = await InternService.getAllInterns();
         res.status(200).json({ status: "success", data: interns });
+    });
+
+    static getAISkillSuggestions = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const userId = req.user?.id;
+        if (!userId) throw new AppError("Không xác định được danh tính thực tập sinh", 401);
+
+        const data = await InternService.getInternSkillData(userId);
+        if (!data.profile) {
+            throw new AppError("Vui lòng khởi tạo hồ sơ cá nhân (Intern Profile) trước khi nhận gợi ý từ AI!", 400);
+        }
+
+        const skillsText = data.profile.skills || "Chưa khai báo kỹ năng";
+        const major = data.profile.major || "Chưa rõ chuyên ngành";
+        const tasksText = data.tasks.map((t: any) => `- Task: "${t.title}" (${t.description}) - Điểm đánh giá: ${t.score}/100`).join('\n') || "Chưa hoàn thành công việc nào được chấm điểm.";
+
+        const prompt = `
+        Bạn là một Mentor AI cấp cao chuyên đào tạo và định hướng phát triển nhân tài tại doanh nghiệp.
+        Hãy phân tích dữ liệu học tập và làm việc của Thực tập sinh (Intern) sau đây và đưa ra gợi ý lộ trình phát triển kỹ năng tiếp theo:
+        
+        [Hồ sơ Intern]
+        - Chuyên ngành học: ${major}
+        - Kỹ năng hiện có: ${skillsText}
+        
+        [Kết quả thực hiện Tasks công việc gần đây]
+        ${tasksText}
+
+        Hãy phản hồi bằng Tiếng Việt, cấu trúc Markdown rõ ràng, chuyên nghiệp và truyền cảm hứng:
+        1. **Đánh giá tổng quan năng lực**: Đánh giá dựa trên kết quả/điểm số của các task đã làm. Điểm số từ 80 trở lên là tốt, dưới 70 cần cải thiện.
+        2. **Xác định các lỗ hổng/điểm yếu**: Phân tích xem Intern đang thiếu những kỹ năng gì hoặc cần tối ưu những gì từ các task đó.
+        3. **Lộ trình kỹ năng tiếp theo (Skill Development Road)**: Gợi ý cụ thể 3 kỹ năng hoặc công nghệ mới nên học ngay, kèm lý do tại sao và một tài liệu hoặc từ khóa học cụ thể.
+        `;
+
+        const suggestion = await AIService.generateContent(prompt);
+
+        res.status(200).json({
+            status: "success",
+            data: { suggestion }
+        });
     });
 }

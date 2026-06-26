@@ -5,8 +5,18 @@ import { jobApi } from "@/api/job.api";
 import { toast } from "sonner";
 
 
+export interface Job {
+    id: number;
+    title: string;
+    description: string;
+    salary?: string;
+    location?: string;
+    department?: string;
+    status: 'OPEN' | 'CLOSED';
+}
+
 export default function CareersPage() {
-    const [jobs, setJobs] = useState<any[]>([]);
+    const [jobs, setJobs] = useState<Job[]>([]);
 
     // 2. Dùng useEffect để ra lệnh: "Ngay khi trang web vừa tải xong, phải tự động chạy đi lấy việc làm!"
     useEffect(() => {

@@ -39,7 +39,7 @@ router.post(
 router.get(
     '/:id/applications', // Lấy toàn bộ CV nộp vào Job có ID tương ứng
     authenticateJWT,
-    authorizeRoles('ADMIN', 'COORDINATOR'),
+    authorizeRoles('ADMIN', 'COORDINATOR', 'HR'),
     ApplicationController.getApplication
 )
 

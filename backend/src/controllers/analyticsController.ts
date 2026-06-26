@@ -21,4 +21,29 @@ export class AnalyticsController {
             }
         });
     });
+
+    static getMonthlyStats = asyncHandler(async (req: Request, res: Response) => {
+        const data = await AnalyticsService.getMonthlyStats();
+        res.status(200).json({ status: "success", data });
+    });
+
+    static getTrainingStats = asyncHandler(async (req: Request, res: Response) => {
+        const data = await AnalyticsService.getTrainingStats();
+        res.status(200).json({ status: "success", data });
+    });
+
+    static getInternKPI = asyncHandler(async (req: Request, res: Response) => {
+        const internId = req.params.id as string;
+        const data = await AnalyticsService.getInternKPI(internId);
+        
+        const completionRate = data.total_tasks === 0 ? 0 : (data.completed_tasks / data.total_tasks) * 100;
+        
+        res.status(200).json({ 
+            status: "success", 
+            data: {
+                ...data,
+                completion_rate_percent: completionRate
+            } 
+        });
+    });
 } 

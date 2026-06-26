@@ -19,11 +19,18 @@ router.get('/profile/:userId',
     InternController.getProfile
 );
 
-// Sửa hồ sơ (Chỉ có Admin và HR mới được phép sửa)
+// Sửa hồ sơ (Cho phép Admin, HR và Mentor sửa để đánh giá kỹ năng)
 router.put('/profile/:userId',
     authenticateJWT,
-    authorizeRoles('ADMIN', 'HR'),
+    authorizeRoles('ADMIN', 'HR', 'MENTOR'),
     InternController.updateProfile
+);
+
+// Gợi ý kỹ năng bằng AI (Chỉ dành cho Intern tự gọi)
+router.post('/ai-suggest-skills',
+    authenticateJWT,
+    authorizeRoles('INTERN'),
+    InternController.getAISkillSuggestions
 );
 
 // Lấy danh sách toàn bộ Intern (Cho Mentor giao việc)

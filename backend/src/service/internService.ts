@@ -38,4 +38,22 @@ export class InternService {
         );
         return interns;
     }
+
+    static async getInternSkillData(userId: number) {
+        // Lấy profile
+        const [profiles]: any = await pool.query(
+            'SELECT university, major, skills FROM intern_profiles WHERE user_id = ?',
+            [userId]
+        );
+        const profile = profiles.length > 0 ? profiles[0] : null;
+
+        // Lấy danh sách tasks đã hoàn thành & chấm điểm
+        const [tasks]: any = await pool.query(
+            `SELECT title, description, score FROM tasks 
+             WHERE intern_id = ? AND status = 'EVALUATED'`,
+            [userId]
+        );
+
+        return { profile, tasks };
+    }
 }

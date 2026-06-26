@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddleware";
 import { EmailService } from "../utils/email";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -6,6 +6,11 @@ import { AppError } from "../utils/AppError";
 import { InterviewService } from "../service/interviewService";
 
 export class InterviewController {
+    static getAllInterviews = asyncHandler(async (req: Request, res: Response) => {
+        const interviews = await InterviewService.getAllInterviews();
+        res.status(200).json({ status: "success", data: interviews });
+    });
+
     static scheduleInterview = asyncHandler(async (req: AuthRequest, res: Response) => {
         const coordinator_id = req.user?.id;
         if (!coordinator_id) {
@@ -30,5 +35,23 @@ export class InterviewController {
         await EmailService.sendMail(appInfo.email, subject, text);
 
         res.status(201).json({ status: "success", message: "Đã lên lịch và báo Email thành công!" });
+    });
+
+    static getMyInterviews = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const candidateId = req.user?.id;
+        if (!candidateId) throw new AppError("Không xác định được danh tính", 401);
+
+        const interviews = await InterviewService.getMyInterviews(candidateId);
+        res.status(200).json({ status: "success", data: interviews });
+    });
+
+    static updateStatus = asyncHandler(async (req: Request, res: Response) => {
+        const interviewId = req.params.id as string;
+        const { status } = req.body;
+        
+        const updated = await InterviewService.updateStatus(interviewId, status);
+        if (!updated) throw new AppError("Không tìm thấy lịch phỏng vấn", 404);
+
+        res.status(200).json({ status: "success", message: `Đã cập nhật trạng thái phỏng vấn thành ${status}` });
     });
 }

@@ -8,10 +8,20 @@ const router = Router();
 
 router.use(authenticateJWT, authorizeRoles('ADMIN', 'COORDINATOR'));
 
+// Lấy danh sách khóa học
+router.get('/', TrainingController.getAllPrograms);
+
 //khởi tạo kháo học
 router.post('/', validate(createProgramSchema), TrainingController.createProgram);
 
 //Mời 1 intern vào khóa học
 router.post('/:trainingId/enroll', validate(enrollInternSchema), TrainingController.enrollIntern);
 
-export default router
+router.get('/:id', TrainingController.getProgramById);
+router.get('/:id/members', TrainingController.getProgramMembers);
+router.delete('/:id', TrainingController.deleteProgram);
+
+// PATCH /api/trainings/members/:id/status
+router.patch('/members/:id/status', TrainingController.updateInternStatus);
+
+export default router;

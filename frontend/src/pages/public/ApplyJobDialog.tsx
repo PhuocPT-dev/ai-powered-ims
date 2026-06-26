@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { jobApi } from "@/api/job.api";
+import type { Job } from './Careers';
 
-export function ApplyJobDialog({ job }: { job: any }) {
+export function ApplyJobDialog({ job }: { job: Job }) {
     const [cvLink, setCvLink] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isOpen, setIsOpen] = useState(false);

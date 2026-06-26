@@ -15,6 +15,7 @@ router.post(
     FeedbackController.submitFeedback
 );
 
+router.get('/mentors', authenticateJWT, authorizeRoles('INTERN'), FeedbackController.getMentors);
 
 router.get(
     '/mentor/:mentorId',

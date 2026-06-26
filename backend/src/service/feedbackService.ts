@@ -12,7 +12,8 @@ export class FeedbackService {
 
     static async getFeedbacksByMentor(mentorId: string) {
         const [feedbacks]: any = await pool.query(
-            `SELECT f.id, f.rating, f.comment, f.is_anonymous, f.created_at, u.full_name as intern_name
+            `SELECT f.id, f.rating, f.comment, f.is_anonymous, f.created_at, 
+            IF(f.is_anonymous = 1, 'Ẩn danh', u.full_name) as intern_name
             FROM feedbacks f
             JOIN users u ON f.intern_id = u.id
             WHERE f.mentor_id = ?
@@ -20,5 +21,10 @@ export class FeedbackService {
             [mentorId]
         );
         return feedbacks;
+    }
+
+    static async getMentors() {
+        const [mentors]: any = await pool.query("SELECT id, full_name, email FROM users WHERE role = 'MENTOR'");
+        return mentors;
     }
 }

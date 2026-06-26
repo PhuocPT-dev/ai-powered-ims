@@ -30,4 +30,9 @@ export class FeedbackController {
         
         res.json({ status: "success", data: secureFeedbacks });
     });
+
+    static getMentors = asyncHandler(async (req: Request, res: Response) => {
+        const mentors = await FeedbackService.getMentors();
+        res.status(200).json({ status: "success", data: mentors });
+    });
 }

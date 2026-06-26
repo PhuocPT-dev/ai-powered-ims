@@ -10,6 +10,10 @@ router.use(authenticateJWT, authorizeRoles('ADMIN'));
 router.put('/users/:id/status', AdminController.toggleUserStatus);
 router.put('/users/:id/reset-password', AdminController.resetPassword);
 
+router.get('/users', AdminController.getAllUsers);
+router.post('/users', AdminController.createUser);
+router.patch('/users/:id/role', AdminController.updateRole);
+
 export default router;
 
 
