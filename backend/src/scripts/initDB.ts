@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import pool from '../config/db';
 
 async function initDB() {
@@ -27,6 +30,7 @@ async function initDB() {
                 salary VARCHAR(100),
                 location VARCHAR(255),
                 employer_id INT NOT NULL,
+                status ENUM('OPEN', 'CLOSED') DEFAULT 'OPEN',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (employer_id) REFERENCES users(id) ON DELETE CASCADE
                 )`
@@ -103,14 +107,14 @@ async function initDB() {
         // Tạo bảng intern_trainings: Bảng điểm danh (Nối Intern với Khóa học).
         const createInternTrainingsTableQuery = `
              CREATE TABLE IF NOT EXISTS intern_trainings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
                 intern_id INT NOT NULL,
                 training_id INT NOT NULL,
                 status ENUM('ENROLLED', 'COMPLETED', 'FAILED') DEFAULT 'ENROLLED',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (intern_id, training_id),
+                enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_intern_training (intern_id, training_id),
                 FOREIGN KEY (intern_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (training_id) REFERENCES training_programs(id) ON DELETE CASCADE
-
             )
         `;
         await pool.query(createInternTrainingsTableQuery);
