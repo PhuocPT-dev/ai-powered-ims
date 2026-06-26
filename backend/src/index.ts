@@ -4,7 +4,7 @@ dotenv.config(); // Phải gọi đầu tiên trước mọi module khác!
 import helmet from 'helmet';
 import express, { Request, Response } from 'express';
 import authRoutes from './routes/authRoutes';
-import jobRoutes from './routes/jobRouter';
+import jobRoutes from './routes/jobRoutes';
 import applicationRoutes from './routes/applicationRoutes';
 import cors from 'cors';
 import internRoutes from './routes/internRoutes';
