@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuthStore } from "../store/authStore";
 
@@ -24,6 +24,16 @@ export default function DashboardLayout() {
         navigate('/login');
     };
 
+    const navLinkClass = ({ isActive }: { isActive: boolean }) => 
+        `block px-4 py-3 rounded-md font-medium transition-colors ${
+            isActive ? 'bg-blue-600 text-white shadow-sm' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+        }`;
+
+    const adminNavLinkClass = ({ isActive }: { isActive: boolean }) => 
+        `block px-4 py-3 rounded-md font-medium transition-colors ${
+            isActive ? 'bg-red-600 text-white shadow-sm' : 'text-red-400 hover:bg-zinc-800 hover:text-red-300'
+        }`;
+
     return (
         <div className="flex h-screen bg-gray-50">
 
@@ -37,35 +47,60 @@ export default function DashboardLayout() {
 
                     {/* Tổng quan: ADMIN, HR, MENTOR, COORDINATOR xem được. INTERN thì KHÔNG */}
                     {canSee(['ADMIN', 'HR', 'MENTOR', 'COORDINATOR']) && (
-                        <Link to="/dashboard" className="block px-4 py-3 rounded-md bg-blue-600 text-white font-medium shadow-sm">
+                        <NavLink to="/dashboard" end className={navLinkClass}>
                             📊 Tổng Quan
-                        </Link>
+                        </NavLink>
                     )}
 
                     {/* Quản lý Tuyển dụng: Chỉ dành cho HR và ADMIN */}
                     {canSee(['ADMIN', 'HR']) && (
-                        <>
-                            <Link to="/dashboard/jobs" className="block px-4 py-3 rounded-md text-zinc-400 font-medium hover:bg-zinc-800 hover:text-white transition-colors">
-                                💼 Quản Lý Việc Làm
-                            </Link>
-                            <Link to="/dashboard/cvs" className="block px-4 py-3 rounded-md text-zinc-400 font-medium hover:bg-zinc-800 hover:text-white transition-colors">
-                                📄 Quản Lý CV
-                            </Link>
-                        </>
+                        <NavLink to="/dashboard/jobs" className={navLinkClass}>
+                            💼 Quản Lý Việc Làm
+                        </NavLink>
                     )}
 
                     {/* Quản lý Thực tập sinh: Dành cho MENTOR, HR, ADMIN */}
                     {canSee(['ADMIN', 'HR', 'MENTOR']) && (
-                        <Link to="/dashboard/interns" className="block px-4 py-3 rounded-md text-zinc-400 font-medium hover:bg-zinc-800 hover:text-white transition-colors">
+                        <NavLink to="/dashboard/interns" className={navLinkClass}>
                             🎓 Thực Tập Sinh
-                        </Link>
+                        </NavLink>
                     )}
 
                     {/* Bảng Công Việc Kanban: INTERN, MENTOR, ADMIN đều phải xem được */}
                     {canSee(['ADMIN', 'MENTOR', 'INTERN']) && (
-                        <Link to="/dashboard/tasks" className="block px-4 py-3 rounded-md text-zinc-400 font-medium hover:bg-zinc-800 hover:text-white transition-colors">
+                        <NavLink to="/dashboard/tasks" className={navLinkClass}>
                             📌 Bảng Công Việc
-                        </Link>
+                        </NavLink>
+                    )}
+
+                    {/* Phát triển kỹ năng: Chỉ Intern và Admin xem được */}
+                    {canSee(['ADMIN', 'INTERN']) && (
+                        <NavLink to="/dashboard/skills" className={navLinkClass}>
+                            📈 Phát Triển Kỹ Năng
+                        </NavLink>
+                    )}
+
+                    {/* Quản lý Đào tạo và Phỏng vấn: Dành cho COORDINATOR, ADMIN */}
+                    {canSee(['ADMIN', 'COORDINATOR']) && (
+                        <NavLink to="/dashboard/trainings" className={navLinkClass}>
+                            🏫 Khóa Đào Tạo
+                        </NavLink>
+                    )}
+                    
+                    {canSee(['ADMIN', 'COORDINATOR', 'HR']) && (
+                        <NavLink to="/dashboard/interviews" className={navLinkClass}>
+                            🗓️ Lịch Phỏng Vấn
+                        </NavLink>
+                    )}
+
+                    {/* Quản lý Hệ thống: Dành cho ADMIN */}
+                    {canSee(['ADMIN']) && (
+                        <div className="pt-4 mt-2 border-t border-zinc-800">
+                            <p className="px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Quản Trị Tối Cao</p>
+                            <NavLink to="/dashboard/users" className={adminNavLinkClass}>
+                                🛡️ Quản Lý User
+                            </NavLink>
+                        </div>
                     )}
 
                 </nav>

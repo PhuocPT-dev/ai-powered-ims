@@ -34,5 +34,16 @@ export class AIService {
             return "Xảy ra lỗi khi phân tích CV";
         }
     }
+
+    static async generateContent(prompt: string): Promise<string> {
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const result = await model.generateContent(prompt);
+            return result.response.text();
+        } catch (error) {
+            console.error("Error generating content via AI:", error);
+            return "Xảy ra lỗi khi nhận phản hồi từ AI";
+        }
+    }
 }
 
