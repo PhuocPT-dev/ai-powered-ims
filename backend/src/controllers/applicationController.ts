@@ -45,4 +45,12 @@ export class ApplicationController {
             data: applications
         });
     });
+
+    static getPendingApplications = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const pendingApps = await ApplicationService.getPendingApplications();
+        res.status(200).json({
+            status: "success",
+            data: pendingApps
+        });
+    });
 }
