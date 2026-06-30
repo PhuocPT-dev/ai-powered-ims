@@ -48,6 +48,7 @@ async function initDB() {
                 ai_summary TEXT,
                 status ENUM('PENDING','REVIEWING','ACCEPTED','REJECTED') DEFAULT 'PENDING',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_applications_candidate_job (candidate_id, job_id),
                 FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
                 FOREIGN KEY (candidate_id) REFERENCES users(id) ON DELETE CASCADE
             )
@@ -62,7 +63,7 @@ async function initDB() {
                 user_id INT NOT NULL,
                 university VARCHAR(255),
                 major VARCHAR(255),
-                skills TEXT,
+                skills JSON,
                 emergency_contact VARCHAR(255),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -132,6 +133,7 @@ async function initDB() {
                 status ENUM('TODO', 'IN_PROGRESS', 'DONE', 'EVALUATED') DEFAULT 'TODO',
                 score INT DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_tasks_intern_status (intern_id, status),
                  FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE,
                  FOREIGN KEY (intern_id) REFERENCES users(id) ON DELETE CASCADE
                 )

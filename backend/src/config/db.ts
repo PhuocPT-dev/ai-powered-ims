@@ -1,8 +1,4 @@
 import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-
-//Kích hoạt đọc file .env
-dotenv.config();
 
 // tạo connection Pool
 const pool = mysql.createPool({

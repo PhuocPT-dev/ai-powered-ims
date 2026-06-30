@@ -1,11 +1,13 @@
 # Bỏ qua thư mục thư viện khổng lồ của NodeJS
 node_modules/
 backend/node_modules/
+backend/dist
 
 # Bỏ qua các file chứa Mật Khẩu (Bảo mật tuyệt đối)
 .env
 backend/.env
 .env.docker
+
 
 # Bỏ qua file rác của Hệ điều hành
 .DS_Store
