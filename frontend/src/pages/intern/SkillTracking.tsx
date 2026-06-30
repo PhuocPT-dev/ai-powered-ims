@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Brain, Star, Send, Award, MessageSquare, AlertCircle } from "lucide-react";
 import { internApi } from "@/api/intern.api";
 import { feedbackApi } from "@/api/feedback.api";
+import { analyticsApi } from "@/api/analytics.api";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
 
@@ -22,11 +23,20 @@ interface Mentor {
     email: string;
 }
 
+interface InternKpi {
+    total_tasks: number;
+    completed_tasks: number;
+    average_score: number;
+    completion_rate_percent: number;
+}
+
 export default function SkillTracking() {
     const { user } = useAuthStore();
     const [profile, setProfile] = useState<Profile | null>(null);
     const [mentors, setMentors] = useState<Mentor[]>([]);
     const [loadingProfile, setLoadingProfile] = useState(true);
+    const [kpi, setKpi] = useState<InternKpi | null>(null);
+    const [loadingKpi, setLoadingKpi] = useState(true);
 
     // AI suggestions states
     const [aiSuggestions, setAiSuggestions] = useState<string>("");
@@ -42,8 +52,21 @@ export default function SkillTracking() {
     useEffect(() => {
         const loadInitialData = async () => {
             if (!user?.id) return;
+            
+            // Tải thông tin KPI thực tập sinh
             try {
-                // Tải thông tin Profile
+                const kpiRes = await analyticsApi.getInternKPI(user.id);
+                if (kpiRes.status === "success") {
+                    setKpi(kpiRes.data);
+                }
+            } catch (error) {
+                console.error("Lỗi tải KPI thực tập sinh");
+            } finally {
+                setLoadingKpi(false);
+            }
+
+            // Tải thông tin Profile
+            try {
                 const profileRes = await internApi.getProfile(user.id);
                 if (profileRes.status === "success") {
                     setProfile(profileRes.data);
@@ -126,6 +149,44 @@ export default function SkillTracking() {
                 <p className="text-gray-500 mt-1">Theo dõi tiến trình phát triển và gửi đánh giá đóng góp chương trình.</p>
             </div>
 
+            {/* Thống kê KPI cá nhân */}
+            {!loadingKpi && kpi && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top duration-500">
+                    <Card className="shadow-sm border-l-4 border-l-teal-500">
+                        <CardContent className="pt-6">
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng Công Việc Được Giao</p>
+                            <p className="text-3xl font-black text-slate-800 mt-2">{kpi.total_tasks}</p>
+                            <p className="text-xs text-slate-400 mt-1">Nhiệm vụ từ người hướng dẫn (Mentor)</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="shadow-sm border-l-4 border-l-indigo-500">
+                        <CardContent className="pt-6">
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tiến Độ Hoàn Thành</p>
+                            <div className="flex items-baseline gap-2 mt-2">
+                                <p className="text-3xl font-black text-indigo-600">{kpi.completed_tasks}</p>
+                                <p className="text-slate-400 font-semibold">/ {kpi.total_tasks} Tasks</p>
+                                <span className="text-xs text-slate-500 font-bold ml-auto">{kpi.completion_rate_percent.toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
+                                <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: `${kpi.completion_rate_percent}%` }}></div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="shadow-sm border-l-4 border-l-yellow-500">
+                        <CardContent className="pt-6">
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Điểm Đánh Giá Trung Bình</p>
+                            <div className="flex items-baseline gap-2 mt-2">
+                                <p className="text-3xl font-black text-yellow-600">
+                                    {kpi.average_score ? Number(kpi.average_score).toFixed(1) : "0.0"}
+                                </p>
+                                <p className="text-slate-400 font-semibold">/ 100</p>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">Tính trên các Task đã được Mentor chấm điểm</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
             {!profile ? (
                 <Card className="border-amber-200 bg-amber-50">
                     <CardContent className="pt-6 flex items-start gap-4">
@@ -188,8 +249,8 @@ export default function SkillTracking() {
                                 </CardTitle>
                                 <CardDescription className="text-indigo-700/70">Phân tích tự động dựa trên chuyên ngành và kết quả các Task công việc</CardDescription>
                             </CardHeader>
-                            <CardContent className="pt-6 prose max-w-none text-gray-700 leading-relaxed font-normal whitespace-pre-line">
-                                {aiSuggestions}
+                            <CardContent className="pt-6 prose max-w-none text-gray-700 leading-relaxed font-normal">
+                                <ReactMarkdown>{aiSuggestions}</ReactMarkdown>
                             </CardContent>
                         </Card>
                     )}
@@ -247,12 +308,12 @@ export default function SkillTracking() {
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-700">Ý Kiến Phản Hồi / Nhận Xét</label>
-                                    <Textarea
+                                    <textarea
                                         value={comment}
-                                        onChange={(e) => setComment(e.target.value)}
+                                        onChange={(e: any) => setComment(e.target.value)}
                                         placeholder="Hãy nhập ý kiến đóng góp của bạn về sự hỗ trợ của Mentor..."
                                         rows={4}
-                                        className="text-sm"
+                                        className="text-sm w-full border rounded-md p-2 bg-white"
                                         required
                                     />
                                 </div>

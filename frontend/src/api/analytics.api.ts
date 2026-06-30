@@ -14,5 +14,10 @@ export const analyticsApi = {
     getTrainingStats: async () => {
         const response = await apiClient.get("/analytics/trainings");
         return response.data;
+    },
+
+    getInternKPI: async (internId: string | number) => {
+        const response = await apiClient.get(`/analytics/interns/${internId}/kpi`);
+        return response.data;
     }
 };

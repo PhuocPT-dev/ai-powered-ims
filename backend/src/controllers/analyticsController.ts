@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AnalyticsService } from "../service/analyticsService";
+import { AuthRequest } from "../middlewares/authMiddleware";
+import { AppError } from "../utils/AppError";
 
 export class AnalyticsController {
     static getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
@@ -32,8 +34,14 @@ export class AnalyticsController {
         res.status(200).json({ status: "success", data });
     });
 
-    static getInternKPI = asyncHandler(async (req: Request, res: Response) => {
+    static getInternKPI = asyncHandler(async (req: AuthRequest, res: Response) => {
         const internId = req.params.id as string;
+
+        // Bảo mật chống IDOR: Intern chỉ được tự xem KPI của mình
+        if (req.user?.role === 'INTERN' && req.user?.id !== Number(internId)) {
+            throw new AppError("Bạn không có quyền xem dữ liệu KPI của người khác!", 403);
+        }
+
         const data = await AnalyticsService.getInternKPI(internId);
         
         const completionRate = data.total_tasks === 0 ? 0 : (data.completed_tasks / data.total_tasks) * 100;
