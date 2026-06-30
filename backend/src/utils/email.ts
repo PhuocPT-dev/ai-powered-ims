@@ -2,7 +2,9 @@ import nodemailer from 'nodemailer'
 
 // Khởi tạo Transporter (Cổng giao tiếp email)
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: process.env.SMTP_SECURE === 'true', // true cho port 465, false cho các port khác (như 587)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
