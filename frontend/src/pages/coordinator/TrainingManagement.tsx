@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, GraduationCap, Calendar, User } from "lucide-react";
+import { Loader2, GraduationCap, Calendar } from "lucide-react";
 import { trainingApi } from "@/api/training.api";
 import { toast } from "sonner";
 
@@ -28,8 +28,7 @@ export default function TrainingManagement() {
             title: String(formData.get('title') || ''),
             description: String(formData.get('description') || ''),
             start_date: String(formData.get('start_date') || ''),
-            end_date: String(formData.get('end_date') || ''),
-            coordinator_id: Number(formData.get('coordinator_id'))
+            end_date: String(formData.get('end_date') || '')
         };
 
         try {
@@ -115,10 +114,6 @@ export default function TrainingManagement() {
                                 <div>
                                     <label className="text-sm font-medium">Ngày Kết Thúc</label>
                                     <input required type="date" name="end_date" className="mt-1 w-full border rounded-md p-2" />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium">ID Người Điều Phối (Tạm)</label>
-                                    <input required type="number" name="coordinator_id" className="mt-1 w-full border rounded-md p-2" placeholder="ID (VD: 2)" />
                                 </div>
                             </div>
                             <button type="submit" disabled={isSubmitting} className="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium">

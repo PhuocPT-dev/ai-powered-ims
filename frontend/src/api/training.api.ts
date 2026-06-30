@@ -5,7 +5,7 @@ export interface CreateProgramDto {
     description: string;
     start_date: string;
     end_date: string;
-    coordinator_id: number;
+    coordinator_id?: number;
 }
 
 export const trainingApi = {
