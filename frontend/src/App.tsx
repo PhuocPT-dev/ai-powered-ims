@@ -14,6 +14,7 @@ import UserManagement from './pages/admin/UserManagement';
 import ProtectedRoute from './components/ProtectedRoute';
 import CareersPage from './pages/public/Careers';
 import SkillTracking from './pages/intern/SkillTracking';
+import FeedbackOverview from './pages/mentor/FeedbackOverview';
 import { Toaster } from 'sonner';
 
 function App() {
@@ -61,6 +62,11 @@ function App() {
           {/* 🛡️ CỬA QUẢN LÝ THỰC TẬP SINH 🛡️ */}
           <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MENTOR']} />}>
             <Route path="interns" element={<InternManagement />} />
+          </Route>
+
+          {/* 🛡️ CỬA CHO MENTOR VÀ HR XEM NHẬN XÉT CỦA INTERN 🛡️ */}
+          <Route element={<ProtectedRoute allowedRoles={['MENTOR', 'ADMIN', 'HR']} />}>
+            <Route path="feedbacks" element={<FeedbackOverview />} />
           </Route>
 
           {/* 🛡️ CỬA CHO ĐIỀU PHỐI VIÊN (COORDINATOR) 🛡️ */}

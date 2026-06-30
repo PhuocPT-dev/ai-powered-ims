@@ -16,13 +16,19 @@ export class FeedbackController {
         res.status(201).json({ status: "success", message: "Cảm ơn bạn đã dũng cảm gửi đánh giá!" });
     });
 
-    static getMentorFeedbacks = asyncHandler(async (req: Request, res: Response) => {
+    static getMentorFeedbacks = asyncHandler(async (req: AuthRequest, res: Response) => {
         const mentorId = req.params.mentorId as string;
+
+        // Bảo mật chống IDOR: Mentor chỉ được xem phản hồi về bản thân họ
+        if (req.user?.role === 'MENTOR' && req.user?.id !== Number(mentorId)) {
+            throw new AppError("Bạn không có quyền xem phản hồi của người hướng dẫn khác!", 403);
+        }
 
         const feedbacks = await FeedbackService.getFeedbacksByMentor(mentorId);
         
         const secureFeedbacks = feedbacks.map((fb: any) => {
-            if (fb.is_anonymous === 1) {
+            // An toàn cho cả kiểu dữ liệu number (1) và boolean (true) của mysql driver
+            if (fb.is_anonymous === 1 || fb.is_anonymous === true) {
                 fb.intern_name = "Thực tập sinh giấu tên 🕵️";
             }
             return fb;

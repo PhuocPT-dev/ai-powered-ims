@@ -66,6 +66,13 @@ export default function DashboardLayout() {
                         </NavLink>
                     )}
 
+                    {/* Xem ý kiến phản hồi của Intern: Dành cho MENTOR, ADMIN, HR */}
+                    {canSee(['ADMIN', 'HR', 'MENTOR']) && (
+                        <NavLink to="/dashboard/feedbacks" className={navLinkClass}>
+                            💬 Nhận Xét Từ Intern
+                        </NavLink>
+                    )}
+
                     {/* Bảng Công Việc Kanban: INTERN, MENTOR, ADMIN đều phải xem được */}
                     {canSee(['ADMIN', 'MENTOR', 'INTERN']) && (
                         <NavLink to="/dashboard/tasks" className={navLinkClass}>
