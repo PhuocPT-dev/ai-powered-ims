@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, CalendarClock, Briefcase, Video } from "lucide-react";
 import { interviewApi } from "@/api/interview.api";
+import { applicationApi } from "@/api/application.api";
 import { toast } from "sonner";
 
 interface Interview {
@@ -17,6 +18,7 @@ interface Interview {
 
 export default function InterviewManagement() {
     const [interviews, setInterviews] = useState<Interview[]>([]);
+    const [pendingApps, setPendingApps] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showScheduleForm, setShowScheduleForm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,8 +30,7 @@ export default function InterviewManagement() {
         const payload = {
             application_id: Number(formData.get('application_id')),
             interview_time: String(formData.get('interview_time') || ''),
-            meeting_link: String(formData.get('meeting_link') || ''),
-            coordinator_id: Number(formData.get('coordinator_id'))
+            meeting_link: String(formData.get('meeting_link') || '')
         };
 
         try {
@@ -37,7 +38,7 @@ export default function InterviewManagement() {
             if (res.status === 'success') {
                 toast.success('Lên lịch phỏng vấn thành công!');
                 setShowScheduleForm(false);
-                // Fetch lại để cập nhật danh sách
+                // Fetch lại
                 const refresh = await interviewApi.getAllInterviews();
                 setInterviews(refresh.data);
             }
@@ -49,19 +50,21 @@ export default function InterviewManagement() {
     };
 
     useEffect(() => {
-        const fetchInterviews = async () => {
+        const fetchData = async () => {
             try {
-                const res = await interviewApi.getAllInterviews();
-                if (res.status === 'success') {
-                    setInterviews(res.data);
-                }
+                const [intRes, appRes] = await Promise.all([
+                    interviewApi.getAllInterviews(),
+                    applicationApi.getPendingApplications()
+                ]);
+                if (intRes.status === 'success') setInterviews(intRes.data);
+                if (appRes.status === 'success') setPendingApps(appRes.data);
             } catch (error) {
-                toast.error("Không thể tải danh sách Lịch phỏng vấn!");
+                toast.error("Không thể tải dữ liệu!");
             } finally {
                 setIsLoading(false);
             }
         };
-        fetchInterviews();
+        fetchData();
     }, []);
 
     if (isLoading) {
@@ -100,9 +103,16 @@ export default function InterviewManagement() {
                     <CardContent>
                         <form onSubmit={handleSchedule} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium">Application ID (Mã đơn)</label>
-                                    <input required name="application_id" type="number" className="mt-1 w-full border rounded-md p-2" placeholder="VD: 10" />
+                                <div className="col-span-2">
+                                    <label className="text-sm font-medium">Chọn Đơn Ứng Tuyển</label>
+                                    <select required name="application_id" className="mt-1 w-full border rounded-md p-2 bg-white">
+                                        <option value="">-- Chọn Ứng viên (Chưa phỏng vấn) --</option>
+                                        {pendingApps.map(app => (
+                                            <option key={app.id} value={app.id}>
+                                                ID: {app.id} - {app.candidate_name} ({app.job_title})
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium">Thời Gian Phỏng Vấn</label>
@@ -111,10 +121,6 @@ export default function InterviewManagement() {
                                 <div className="col-span-2">
                                     <label className="text-sm font-medium">Link Google Meet / Zoom</label>
                                     <input required name="meeting_link" type="url" className="mt-1 w-full border rounded-md p-2" placeholder="https://meet.google.com/..." />
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="text-sm font-medium">Coordinator ID (Người phỏng vấn)</label>
-                                    <input required type="number" name="coordinator_id" className="mt-1 w-full border rounded-md p-2" placeholder="VD: 2" />
                                 </div>
                             </div>
                             <button type="submit" disabled={isSubmitting} className="bg-teal-600 text-white px-6 py-2 rounded-md font-medium">

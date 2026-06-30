@@ -4,7 +4,7 @@ export interface ScheduleInterviewDto {
     application_id: number;
     interview_time: string;
     meeting_link: string;
-    coordinator_id: number;
+    coordinator_id?: number;
 }
 
 export const interviewApi = {
@@ -15,6 +15,11 @@ export const interviewApi = {
 
     scheduleInterview: async (data: ScheduleInterviewDto) => {
         const response = await apiClient.post("/interviews/schedule", data);
+        return response.data;
+    },
+
+    getMyInterviews: async () => {
+        const response = await apiClient.get("/interviews/my-interviews");
         return response.data;
     }
 };

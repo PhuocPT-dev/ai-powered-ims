@@ -10,5 +10,10 @@ export const applicationApi = {
     updateStatus: async (applicationId: number, status: string) => {
         const response = await apiClient.put(`/applications/${applicationId}/status`, { status });
         return response.data;
+    },
+    // Lấy các đơn ứng tuyển đang chờ phỏng vấn/review
+    getPendingApplications: async () => {
+        const response = await apiClient.get("/applications/pending");
+        return response.data;
     }
 }

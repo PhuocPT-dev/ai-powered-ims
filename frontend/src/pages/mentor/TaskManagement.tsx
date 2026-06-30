@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { ClipboardList, PlusCircle, Clock, CheckCircle, AlertCircle, PlayCircle } from "lucide-react";
 import { taskApi, type Task } from "@/api/task.api";
-import apiClient from "@/api/client";
+import { internApi } from "@/api/intern.api";
 import { toast } from "sonner";
 
 export default function TaskManagement() {
@@ -46,8 +46,8 @@ export default function TaskManagement() {
     // Hàm gọi API lấy danh sách Intern để đổ vào thẻ Select
     const fetchInterns = async () => {
         try {
-            const res = await apiClient.get("/interns");
-            setInterns(res.data.data);
+            const res = await internApi.getAllInterns();
+            setInterns(res.data);
         } catch (error) {
             toast.error("Không thể tải danh sách Intern. Vui lòng thử lại!");
         }
