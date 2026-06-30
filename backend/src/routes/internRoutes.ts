@@ -1,14 +1,17 @@
 import { Router } from "express";
 import { authenticateJWT, authorizeRoles } from "../middlewares/authMiddleware";
 import { InternController } from "../controllers/internController";
+import { validate } from "../middlewares/validateMiddleware";
+import { internProfileSchema } from "../validators/internValidator";
 
 
 const router = Router();
 
-// Lớp kẹp Middleware: Chỉ bản thân INTERN mới được quyền tự tạo hồ sơ của mình
-router.post('/profile',
+// Cho phép Intern tự tạo hồ sơ, hoặc ADMIN, HR, MENTOR tạo hộ bằng cách truyền thêm userId qua URL parameter
+router.post('/profile/:userId?',
     authenticateJWT,
-    authorizeRoles('INTERN'),
+    authorizeRoles('ADMIN', 'HR', 'MENTOR', 'INTERN'),
+    validate(internProfileSchema),
     InternController.createProfile
 );
 
@@ -19,10 +22,11 @@ router.get('/profile/:userId',
     InternController.getProfile
 );
 
-// Sửa hồ sơ (Cho phép Admin, HR và Mentor sửa để đánh giá kỹ năng)
+// Sửa hồ sơ (Cho phép Admin, HR, Mentor và bản thân Intern sửa)
 router.put('/profile/:userId',
     authenticateJWT,
-    authorizeRoles('ADMIN', 'HR', 'MENTOR'),
+    authorizeRoles('ADMIN', 'HR', 'MENTOR', 'INTERN'),
+    validate(internProfileSchema),
     InternController.updateProfile
 );
 

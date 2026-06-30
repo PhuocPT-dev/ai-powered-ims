@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { internApi } from "@/api/intern.api";
+import { analyticsApi } from "@/api/analytics.api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -31,6 +32,7 @@ export default function InternManagement() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [profile, setProfile] = useState<Profile | null>(null);
+    const [kpi, setKpi] = useState<any | null>(null);
     
     // Skill Assessment edit states
     const [skillsInput, setSkillsInput] = useState("");
@@ -59,17 +61,18 @@ export default function InternManagement() {
         setLoadingProfile(true);
         setProfile(null);
         setSkillsInput("");
+        setKpi(null);
         
         try {
-            const res = await internApi.getProfile(intern.id);
-            if (res.status === "success" && res.data) {
-                setProfile(res.data);
-                setSkillsInput(res.data.skills || "");
-            }
-        } catch (error: any) {
-            // Lỗi 404 có nghĩa là Intern chưa tự khai báo profile.
-            // Ta tạo một profile mẫu trống để Mentor tự điền đánh giá.
-            if (error.response?.status === 404) {
+            const [profileRes, kpiRes] = await Promise.all([
+                internApi.getProfile(intern.id).catch(() => null),
+                analyticsApi.getInternKPI(intern.id).catch(() => null)
+            ]);
+
+            if (profileRes && profileRes.status === "success" && profileRes.data) {
+                setProfile(profileRes.data);
+                setSkillsInput(profileRes.data.skills || "");
+            } else {
                 setProfile({
                     user_id: intern.id,
                     university: "",
@@ -77,9 +80,13 @@ export default function InternManagement() {
                     skills: "",
                     emergency_contact: ""
                 });
-            } else {
-                toast.error("Lỗi khi tải thông tin hồ sơ!");
             }
+
+            if (kpiRes && kpiRes.status === "success") {
+                setKpi(kpiRes.data);
+            }
+        } catch (error: any) {
+            toast.error("Lỗi khi tải thông tin hồ sơ!");
         } finally {
             setLoadingProfile(false);
         }
@@ -91,24 +98,18 @@ export default function InternManagement() {
         try {
             // Cập nhật hoặc Khởi tạo Profile mới
             const payload = {
-                university: profile.university,
-                major: profile.major,
+                university: profile.university || "Chưa khai báo",
+                major: profile.major || "Chưa khai báo",
                 skills: skillsInput,
-                emergency_contact: profile.emergency_contact
+                emergency_contact: profile.emergency_contact || "Chưa khai báo"
             };
             
-            let res;
             if (profile.id) {
                 // Nếu đã có Profile, gọi cập nhật
-                res = await internApi.updateProfile(selectedIntern.id, payload);
+                await internApi.updateProfile(selectedIntern.id, payload);
             } else {
-                // Chưa có profile, thì tiến hành tạo mới
-                res = await apiClient.post("/interns/profile", {
-                    university: profile.university || "Chưa khai báo",
-                    major: profile.major || "Chưa khai báo",
-                    skills: skillsInput,
-                    emergency_contact: profile.emergency_contact || "Chưa khai báo"
-                });
+                // Chưa có profile, thì tiến hành tạo mới thông qua api client đã bọc sẵn
+                await internApi.createProfile(selectedIntern.id, payload);
             }
 
             toast.success("Đánh giá kỹ năng (Skill Assessment) thành công!");
@@ -210,6 +211,28 @@ export default function InternManagement() {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Chỉ số KPI thực tập sinh */}
+                            {kpi && (
+                                <div className="grid grid-cols-3 gap-2 bg-indigo-50/40 p-3 rounded-lg border border-indigo-100/50 text-center">
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tổng Task</p>
+                                        <p className="text-base font-extrabold text-slate-800 mt-0.5">{kpi.total_tasks}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Hoàn Thành</p>
+                                        <p className="text-base font-extrabold text-indigo-600 mt-0.5">
+                                            {kpi.completed_tasks}/{kpi.total_tasks}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Điểm TB</p>
+                                        <p className="text-base font-extrabold text-yellow-600 mt-0.5">
+                                            {kpi.average_score ? Number(kpi.average_score).toFixed(1) : "0.0"}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Skill Assessment field */}
                             <div className="space-y-2.5">

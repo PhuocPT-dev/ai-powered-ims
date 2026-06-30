@@ -18,6 +18,12 @@ export const internApi = {
         return response.data;
     },
 
+    createProfile: async (userId: number | string | undefined, data: UpdateProfileDto) => {
+        const url = userId ? `/interns/profile/${userId}` : '/interns/profile';
+        const response = await apiClient.post(url, data);
+        return response.data;
+    },
+
     getAllInterns: async () => {
         const response = await apiClient.get("/interns");
         return response.data;
@@ -28,3 +34,4 @@ export const internApi = {
         return response.data;
     }
 };
+
