@@ -8,7 +8,7 @@ export class ApplicationService {
     // lấy danh sách CV
     static async getApplicationsByJob(jobId: string) {
         const [rows] = await pool.query(`
-            SELECT id, candidate_id, cv_url, ai_summary, status, created_at
+            SELECT id, candidate_id, cv_url, ai_summary, ai_score, status, created_at
             FROM applications
             WHERE job_id = ?
             ORDER BY created_at DESC`,
@@ -17,16 +17,33 @@ export class ApplicationService {
         return rows;
     }
 
+    static async getPendingApplications() {
+        const [rows] = await pool.query(`
+            SELECT a.id, a.status, u.full_name as candidate_name, j.title as job_title
+            FROM applications a
+            JOIN users u ON a.candidate_id = u.id
+            JOIN jobs j ON a.job_id = j.id
+            WHERE a.status IN ('PENDING', 'REVIEWING')
+            ORDER BY a.created_at DESC
+        `);
+        return rows;
+    }
+
     //đưa cho AI chấm, rồi lưu vào Database
     static async applyJob(jobId: string, candidateId: number, cv_url: string) {
         const cvText = await PDFService.extractTextFromUrl(cv_url);
         let aiSummary = "AI không thể đọc được CV này.";
+        let aiScore = null;
+
         if (cvText && cvText.length > 20) {
-            aiSummary = await AIService.analyzeCV(cvText);
+            const aiResult = await AIService.analyzeCV(cvText);
+            aiSummary = aiResult.summary;
+            aiScore = aiResult.score;
         }
+        
         const [result]: any = await pool.query(
-            'INSERT INTO applications (job_id, candidate_id, cv_url, ai_summary) VALUES (?,?,?,?)',
-            [jobId, candidateId, cv_url, aiSummary]
+            'INSERT INTO applications (job_id, candidate_id, cv_url, ai_summary, ai_score) VALUES (?,?,?,?,?)',
+            [jobId, candidateId, cv_url, aiSummary, aiScore]
         );
         return result;
     }

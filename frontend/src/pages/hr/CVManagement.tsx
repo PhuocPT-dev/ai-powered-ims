@@ -12,6 +12,7 @@ interface Application {
     candidate_id: number;
     cv_url: string;
     ai_summary: string;
+    ai_score?: number | null;
     status: 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
     created_at: string;
 }
@@ -60,6 +61,7 @@ export default function CVManagement() {
                         <TableRow className="bg-gray-50">
                             <TableHead className="w-[80px]">Mã Đơn</TableHead>
                             <TableHead>Link CV</TableHead>
+                            <TableHead className="w-[120px] text-center">Điểm AI Chấm</TableHead>
                             <TableHead className="w-[300px]">AI Nhận Xét</TableHead>
                             <TableHead>Trạng Thái</TableHead>
                             <TableHead className="text-right">Quyết Định</TableHead>
@@ -73,6 +75,19 @@ export default function CVManagement() {
                                     <a href={app.cv_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">
                                         Xem CV
                                     </a>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    {app.ai_score !== null && app.ai_score !== undefined ? (
+                                        <Badge className={`font-bold text-xs px-2.5 py-1 ${
+                                            app.ai_score >= 8 ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-50' :
+                                            app.ai_score >= 5 ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50' :
+                                            'bg-red-50 text-red-700 border-red-200 hover:bg-red-50'
+                                        }`} variant="outline">
+                                            ⭐ {app.ai_score}/10
+                                        </Badge>
+                                    ) : (
+                                        <span className="text-gray-400 italic text-xs">Chưa chấm</span>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-sm text-gray-600 italic line-clamp-2" title={app.ai_summary}>
                                     {app.ai_summary}
@@ -95,7 +110,7 @@ export default function CVManagement() {
                                         size="sm"
                                         className="bg-green-600 hover:bg-green-700 text-white"
                                         onClick={() => handleUpdateStatus(app.id, 'ACCEPTED')}
-                                        disabled={app.status === 'ACCEPTED'} // Nếu đã Duyệt rồi thì làm mờ nút đi không cho bấm nữa
+                                        disabled={app.status === 'ACCEPTED'}
                                     >
                                         Duyệt
                                     </Button>
@@ -114,7 +129,7 @@ export default function CVManagement() {
                         {/* Nếu chưa có ai nộp đơn thì hiện dòng này cho đỡ trống */}
                         {applications.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center text-gray-500 py-6">
+                                <TableCell colSpan={6} className="text-center text-gray-500 py-6">
                                     Chưa có ứng viên nào nộp hồ sơ cho Job này.
                                 </TableCell>
                             </TableRow>
