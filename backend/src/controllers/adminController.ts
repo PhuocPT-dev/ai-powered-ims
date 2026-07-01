@@ -36,8 +36,8 @@ export class AdminController {
         await EmailService.sendMail(user.email, subject, text);
 
         res.status(200).json({ 
-            message: "Đã reset và gửi mật khẩu mới qua Email thành công!",
-            newPassword: tempPassword
+            status: "success",
+            message: "Đã reset và gửi mật khẩu mới qua Email thành công!"
         });
     });
 
@@ -63,7 +63,7 @@ export class AdminController {
             res.status(201).json({
                 status: "success",
                 message: "Tạo tài khoản và gửi email thành công!",
-                data: { email, role, tempPassword }
+                data: { email, role }
             });
         } catch (error: any) {
             // Xử lý lỗi trùng email (MySQL: ER_DUP_ENTRY)

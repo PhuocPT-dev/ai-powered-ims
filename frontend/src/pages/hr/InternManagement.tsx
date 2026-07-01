@@ -19,7 +19,7 @@ interface Profile {
     user_id: number;
     university: string;
     major: string;
-    skills: string;
+    skills: string | string[];
     emergency_contact: string;
 }
 
@@ -71,7 +71,12 @@ export default function InternManagement() {
 
             if (profileRes && profileRes.status === "success" && profileRes.data) {
                 setProfile(profileRes.data);
-                setSkillsInput(profileRes.data.skills || "");
+                const skillsData = profileRes.data.skills;
+                setSkillsInput(
+                    Array.isArray(skillsData) 
+                        ? skillsData.join(', ') 
+                        : (typeof skillsData === 'string' ? skillsData : "")
+                );
             } else {
                 setProfile({
                     user_id: intern.id,

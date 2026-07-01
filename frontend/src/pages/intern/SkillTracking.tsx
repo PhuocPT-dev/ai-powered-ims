@@ -13,7 +13,7 @@ import { toast } from "sonner";
 interface Profile {
     university: string;
     major: string;
-    skills: string;
+    skills: string | string[];
     emergency_contact: string;
 }
 
@@ -227,7 +227,7 @@ export default function SkillTracking() {
                         <CardContent className="pt-6">
                             <div className="flex flex-wrap gap-2">
                                 {profile?.skills ? (
-                                    profile.skills.split(',').map((skill, index) => (
+                                    (Array.isArray(profile.skills) ? profile.skills : profile.skills.split(',')).map((skill, index) => (
                                         <Badge key={index} variant="secondary" className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-semibold hover:bg-indigo-100 transition-colors">
                                             ⚡ {skill.trim()}
                                         </Badge>

@@ -54,8 +54,8 @@ export default function UserManagement() {
         if (!newUser.full_name || !newUser.email) return toast.error("Vui lòng điền đủ thông tin!");
         setIsCreating(true);
         try {
-            const res = await adminApi.createUser(newUser);
-            toast.success(`Tạo thành công! Mật khẩu tạm: ${res.data.tempPassword}`, { duration: 10000 });
+            await adminApi.createUser(newUser);
+            toast.success("Tạo thành công! Mật khẩu tạm thời đã được gửi qua email của người dùng.", { duration: 6000 });
             setIsCreateOpen(false);
             setNewUser({ full_name: '', email: '', role: 'HR' });
             fetchUsers();
@@ -80,8 +80,8 @@ export default function UserManagement() {
     const handleResetPassword = async (userId: number) => {
         if (!confirm("Bạn có chắc muốn Reset mật khẩu người này?")) return;
         try {
-            const res = await adminApi.resetPassword(userId);
-            toast.success(`Reset thành công! Mật khẩu mới: ${res.newPassword}`, { duration: 10000 });
+            await adminApi.resetPassword(userId);
+            toast.success("Reset thành công! Mật khẩu mới đã được gửi qua email của người dùng.", { duration: 6000 });
         } catch (error) {
             toast.error("Lỗi khi reset mật khẩu!");
         }

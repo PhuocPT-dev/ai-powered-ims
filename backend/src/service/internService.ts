@@ -46,6 +46,13 @@ export class InternService {
             [userId]
         );
         const profile = profiles.length > 0 ? profiles[0] : null;
+        if (profile && profile.skills) {
+            try {
+                profile.skills = JSON.parse(profile.skills);
+            } catch (e) {
+                profile.skills = [];
+            }
+        }
 
         // Lấy danh sách tasks đã hoàn thành & chấm điểm
         const [tasks]: any = await pool.query(

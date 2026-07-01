@@ -61,6 +61,17 @@ export class InternController {
             throw new AppError("Không tìm thấy thông tin hồ sơ này.", 404);
         }
         
+        // Giải mã kỹ năng từ JSON string thành mảng
+        if (profile.skills) {
+            try {
+                profile.skills = JSON.parse(profile.skills);
+            } catch (e) {
+                profile.skills = [];
+            }
+        } else {
+            profile.skills = [];
+        }
+        
         res.status(200).json({ status: "success", data: profile });
     });
 

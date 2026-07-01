@@ -15,7 +15,27 @@ import ProtectedRoute from './components/ProtectedRoute';
 import CareersPage from './pages/public/Careers';
 import SkillTracking from './pages/intern/SkillTracking';
 import FeedbackOverview from './pages/mentor/FeedbackOverview';
+import { useAuthStore } from './store/authStore';
 import { Toaster } from 'sonner';
+
+function DashboardIndex() {
+  const { user } = useAuthStore();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Điều hướng dựa trên vai trò để bảo mật thông tin
+  if (user.role === 'INTERN') {
+    return <Navigate to="/dashboard/tasks" replace />;
+  }
+  if (user.role === 'MENTOR') {
+    return <Navigate to="/dashboard/interns" replace />;
+  }
+
+  // HR, ADMIN, COORDINATOR được phép xem DashboardOverview
+  return <DashboardOverview />;
+}
 
 function App() {
   return (
@@ -36,7 +56,7 @@ function App() {
         {/* Đây là cái Khung chính */}
         <Route path="/dashboard" element={<DashboardLayout />} >
           {/* Cổng để nhét ruột vào */}
-          <Route index element={<DashboardOverview />} />
+          <Route index element={<DashboardIndex />} />
           {/* 🔒ProtectedRoute bảo vệ khu vực HR 🔒 */}
           <Route element={<ProtectedRoute allowedRoles={['HR', 'ADMIN']} />}>
             <Route path="jobs" element={<JobManagement />} />
