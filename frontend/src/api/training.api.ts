@@ -22,5 +22,10 @@ export const trainingApi = {
     enrollIntern: async (programId: number, internId: number) => {
         const response = await apiClient.post(`/trainings/${programId}/enroll`, { intern_id: internId });
         return response.data;
+    },
+
+    getMyTrainings: async () => {
+        const response = await apiClient.get("/trainings/my-trainings");
+        return response.data;
     }
 };

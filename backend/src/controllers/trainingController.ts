@@ -83,4 +83,12 @@ export class TrainingController {
         if (!deleted) throw new AppError("Không tìm thấy khóa học", 404);
         res.status(200).json({ status: "success", message: "Đã xóa khóa học" });
     });
+
+    static getMyTrainings = asyncHandler(async (req: AuthRequest, res: Response) => {
+        const internId = req.user?.id;
+        if (!internId) throw new AppError("Không xác định được danh tính", 401);
+
+        const programs = await TrainingService.getInternTrainings(internId);
+        res.status(200).json({ status: "success", data: programs });
+    });
 }

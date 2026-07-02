@@ -1,10 +1,28 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuthStore } from "../store/authStore";
 
 export default function DashboardLayout() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, logout } = useAuthStore();
+
+    // Map các đường dẫn sang tên tiêu đề trang tương ứng
+    const getPageTitle = () => {
+        const path = location.pathname;
+        if (path === "/dashboard") return "Trang Tổng Quan";
+        if (path === "/dashboard/jobs") return "Quản Lý Việc Làm";
+        if (path.startsWith("/dashboard/jobs/")) return "Hồ Sơ Ứng Viên";
+        if (path === "/dashboard/interns") return "Quản Lý Thực Tập Sinh";
+        if (path === "/dashboard/tasks") return "Bảng Công Việc Kanban";
+        if (path === "/dashboard/skills") return "Phát Triển Kỹ Năng";
+        if (path === "/dashboard/my-trainings") return "Lộ Trình Đào Tạo Của Tôi";
+        if (path === "/dashboard/feedbacks") return "Nhận Xét Từ Intern";
+        if (path === "/dashboard/trainings") return "Chương Trình Đào Tạo";
+        if (path === "/dashboard/interviews") return "Lịch Hẹn Phỏng Vấn";
+        if (path === "/dashboard/users") return "Quản Lý Thành Viên";
+        return "Hệ Thống Quản Lý";
+    };
 
     useEffect(() => {
         if (!user) {
@@ -87,6 +105,13 @@ export default function DashboardLayout() {
                         </NavLink>
                     )}
 
+                    {/* Lịch đào tạo cá nhân: Dành cho INTERN và ADMIN */}
+                    {canSee(['ADMIN', 'INTERN']) && (
+                        <NavLink to="/dashboard/my-trainings" className={navLinkClass}>
+                            🏫 Lịch Đào Tạo
+                        </NavLink>
+                    )}
+
                     {/* Quản lý Đào tạo và Phỏng vấn: Dành cho COORDINATOR, ADMIN */}
                     {canSee(['ADMIN', 'COORDINATOR']) && (
                         <NavLink to="/dashboard/trainings" className={navLinkClass}>
@@ -126,7 +151,7 @@ export default function DashboardLayout() {
             {/* Phần cột to đùng bên phải */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 <header className="h-16 bg-white border-b flex items-center px-6 justify-between shadow-sm z-0">
-                    <h2 className="text-lg font-semibold text-gray-700">Trang Tổng Quan</h2>
+                    <h2 className="text-lg font-semibold text-gray-700">{getPageTitle()}</h2>
 
                     <div className="flex items-center gap-4">
                         <span className="text-sm font-medium text-gray-600">Xin chào, {user?.full_name || 'Khách'}!</span>

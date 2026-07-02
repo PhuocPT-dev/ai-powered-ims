@@ -84,4 +84,19 @@ export class TrainingService {
         const [result]: any = await pool.query('DELETE FROM training_programs WHERE id = ?', [trainingId]);
         return result.affectedRows > 0;
     }
+
+    static async getInternTrainings(internId: number) {
+        const [programs]: any = await pool.query(
+            `SELECT it.id as intern_training_id, it.status, it.enrolled_at,
+            t.id as program_id, t.title, t.description, t.start_date, t.end_date,
+            u.full_name as coordinator_name, u.email as coordinator_email
+            FROM intern_trainings it
+            JOIN training_programs t ON it.training_id = t.id
+            LEFT JOIN users u ON t.coordinator_id = u.id
+            WHERE it.intern_id = ?
+            ORDER BY t.start_date ASC`,
+            [internId]
+        );
+        return programs;
+    }
 }

@@ -23,6 +23,13 @@ interface Profile {
     emergency_contact: string;
 }
 
+interface InternKpi {
+    total_tasks: number;
+    completed_tasks: number;
+    average_score: number;
+    completion_rate_percent: number;
+}
+
 export default function InternManagement() {
     const [interns, setInterns] = useState<Intern[]>([]);
     const [loading, setLoading] = useState(true);
@@ -32,7 +39,7 @@ export default function InternManagement() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [profile, setProfile] = useState<Profile | null>(null);
-    const [kpi, setKpi] = useState<any | null>(null);
+    const [kpi, setKpi] = useState<InternKpi | null>(null);
     
     // Skill Assessment edit states
     const [skillsInput, setSkillsInput] = useState("");

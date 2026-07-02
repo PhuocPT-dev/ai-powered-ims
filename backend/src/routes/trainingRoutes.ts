@@ -6,6 +6,9 @@ import { createProgramSchema, enrollInternSchema } from "../validators/trainingV
 
 const router = Router();
 
+// Ứng viên thực tập (Intern) tự xem danh sách khóa học của mình
+router.get('/my-trainings', authenticateJWT, authorizeRoles('INTERN', 'ADMIN'), TrainingController.getMyTrainings);
+
 router.use(authenticateJWT, authorizeRoles('ADMIN', 'COORDINATOR'));
 
 // Lấy danh sách khóa học

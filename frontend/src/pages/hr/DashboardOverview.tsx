@@ -20,10 +20,21 @@ interface DashboardStats {
     }[];
 }
 
+interface MonthlyStat {
+    month: string;
+    total_applications: number;
+}
+
+interface TrainingStat {
+    title: string;
+    total_interns: number;
+    completed_interns: number;
+}
+
 export default function DashboardOverview() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
-    const [monthlyStats, setMonthlyStats] = useState<any[]>([]);
-    const [trainingStats, setTrainingStats] = useState<any[]>([]);
+    const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
+    const [trainingStats, setTrainingStats] = useState<TrainingStat[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {

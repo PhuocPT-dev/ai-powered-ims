@@ -14,6 +14,7 @@ import UserManagement from './pages/admin/UserManagement';
 import ProtectedRoute from './components/ProtectedRoute';
 import CareersPage from './pages/public/Careers';
 import SkillTracking from './pages/intern/SkillTracking';
+import MyTrainings from './pages/intern/MyTrainings';
 import FeedbackOverview from './pages/mentor/FeedbackOverview';
 import { useAuthStore } from './store/authStore';
 import { Toaster } from 'sonner';
@@ -72,6 +73,7 @@ function App() {
           {/* 🛡️ CỬA CHO INTERN THEO DÕI KỸ NĂNG & PHẢN HỒI 🛡️ */}
           <Route element={<ProtectedRoute allowedRoles={['INTERN', 'ADMIN']} />}>
             <Route path="skills" element={<SkillTracking />} />
+            <Route path="my-trainings" element={<MyTrainings />} />
           </Route>
 
           {/* 🛡️ CỬA CHO MENTOR QUẢN LÝ TASK 🛡️ */}

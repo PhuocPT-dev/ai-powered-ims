@@ -8,8 +8,10 @@ export const validate = (schema: ZodSchema) => {
             req.body = await schema.parseAsync(req.body);
             next();
         } catch (error: any) {
-            const message = (error.issues && error.issues.length > 0) ? error.issues[0].message : " Lỗi định dạng dữ liệu";
+            const message = (error.issues && error.issues.length > 0)
+                ? error.issues.map((issue: any) => issue.message).join(', ')
+                : "Lỗi định dạng dữ liệu";
             next(new AppError(message, 400));
         }
-    }
-}
+    };
+};
