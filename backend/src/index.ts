@@ -1,6 +1,5 @@
 import dotenv from 'dotenv';
 dotenv.config(); // Phải gọi đầu tiên trước mọi module khác!
-
 import helmet from 'helmet';
 import express, { Request, Response } from 'express';
 import authRoutes from './routes/authRoutes';
@@ -16,6 +15,11 @@ import feedbackRoutes from './routes/feedbackRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import { setupSwagger } from './config/swagger';
 import { errorHandler } from './middlewares/errorHandler';
+import { createServer } from 'http';
+import { setupSocket } from './config/socket';
+import messageRoutes from './routes/messageRoutes';
+
+
 import pool from './config/db';
 
 
@@ -69,11 +73,18 @@ app.use('/api/feedbacks', feedbackRoutes);
 
 app.use('/api/analytics', analyticsRoutes);
 
+app.use('/api/messages', messageRoutes);
+
+
 
 // Khai báo Error handler global
 app.use(errorHandler);
 
-//Khởi động server
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-})
+// Tạo HTTP Server bọc quanh Express app
+const server = createServer(app);
+// Tích hợp Socket.io vào HTTP Server
+setupSocket(server);
+
+server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT} with WebSockets enabled!`);
+});

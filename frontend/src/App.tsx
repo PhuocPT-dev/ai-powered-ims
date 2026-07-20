@@ -16,8 +16,11 @@ import CareersPage from './pages/public/Careers';
 import SkillTracking from './pages/intern/SkillTracking';
 import MyTrainings from './pages/intern/MyTrainings';
 import FeedbackOverview from './pages/mentor/FeedbackOverview';
+import NotFound from './pages/public/NotFound';
 import { useAuthStore } from './store/authStore';
 import { Toaster } from 'sonner';
+import ChatPage from './pages/ChatPage';
+
 
 function DashboardIndex() {
   const { user } = useAuthStore();
@@ -95,7 +98,12 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={['COORDINATOR', 'ADMIN']} />}>
             <Route path="trainings" element={<TrainingManagement />} />
           </Route>
-          
+
+          {/* 🛡️ CỔNG CHAT CHUNG CHO TẤT CẢ THÀNH VIÊN 🛡️ */}
+          <Route element={<ProtectedRoute allowedRoles={['INTERN', 'MENTOR', 'COORDINATOR', 'HR', 'ADMIN']} />}>
+            <Route path="chat" element={<ChatPage />} />
+          </Route>
+
           <Route element={<ProtectedRoute allowedRoles={['COORDINATOR', 'ADMIN', 'HR']} />}>
             <Route path="interviews" element={<InterviewManagement />} />
           </Route>
@@ -105,7 +113,12 @@ function App() {
             <Route path="users" element={<UserManagement />} />
           </Route>
 
+          {/* 404 fallback cho các đường dẫn sai bên trong Dashboard */}
+          <Route path="*" element={<NotFound isInDashboard={true} />} />
         </Route>
+
+        {/* 404 fallback cho các đường dẫn sai bên ngoài Dashboard */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

@@ -1,11 +1,52 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/authStore";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import { authApi } from "@/api/auth.api";
+import { toast } from "sonner";
 
 export default function DashboardLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout } = useAuthStore();
+
+    // States for Change Password
+    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+    const [oldPassword, setOldPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword !== confirmPassword) {
+            return toast.error("Mật khẩu xác nhận không khớp!");
+        }
+
+        setIsChangingPassword(true);
+        try {
+            const res = await authApi.changePassword({
+                old_password: oldPassword,
+                new_password: newPassword,
+                confirm_new_password: confirmPassword
+            });
+
+            if (res.status === "success") {
+                toast.success("Thay đổi mật khẩu thành công!");
+                setIsChangePasswordOpen(false);
+                setOldPassword("");
+                setNewPassword("");
+                setConfirmPassword("");
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Lỗi khi đổi mật khẩu!");
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
 
     // Map các đường dẫn sang tên tiêu đề trang tương ứng
     const getPageTitle = () => {
@@ -21,6 +62,8 @@ export default function DashboardLayout() {
         if (path === "/dashboard/trainings") return "Chương Trình Đào Tạo";
         if (path === "/dashboard/interviews") return "Lịch Hẹn Phỏng Vấn";
         if (path === "/dashboard/users") return "Quản Lý Thành Viên";
+        if (path === "/dashboard/chat") return "Trò Chuyện Trực Tuyến";
+
         return "Hệ Thống Quản Lý";
     };
 
@@ -42,14 +85,12 @@ export default function DashboardLayout() {
         navigate('/login');
     };
 
-    const navLinkClass = ({ isActive }: { isActive: boolean }) => 
-        `block px-4 py-3 rounded-md font-medium transition-colors ${
-            isActive ? 'bg-blue-600 text-white shadow-sm' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+    const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+        `block px-4 py-3 rounded-md font-medium transition-colors ${isActive ? 'bg-blue-600 text-white shadow-sm' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
         }`;
 
-    const adminNavLinkClass = ({ isActive }: { isActive: boolean }) => 
-        `block px-4 py-3 rounded-md font-medium transition-colors ${
-            isActive ? 'bg-red-600 text-white shadow-sm' : 'text-red-400 hover:bg-zinc-800 hover:text-red-300'
+    const adminNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+        `block px-4 py-3 rounded-md font-medium transition-colors ${isActive ? 'bg-red-600 text-white shadow-sm' : 'text-red-400 hover:bg-zinc-800 hover:text-red-300'
         }`;
 
     return (
@@ -69,6 +110,14 @@ export default function DashboardLayout() {
                             📊 Tổng Quan
                         </NavLink>
                     )}
+
+                    {/* Chat Room chung cho mọi vai trò */}
+                    {canSee(['ADMIN', 'HR', 'MENTOR', 'COORDINATOR', 'INTERN']) && (
+                        <NavLink to="/dashboard/chat" className={navLinkClass}>
+                            💬 Trò Chuyện
+                        </NavLink>
+                    )}
+
 
                     {/* Quản lý Tuyển dụng: Chỉ dành cho HR và ADMIN */}
                     {canSee(['ADMIN', 'HR']) && (
@@ -108,17 +157,17 @@ export default function DashboardLayout() {
                     {/* Lịch đào tạo cá nhân: Dành cho INTERN và ADMIN */}
                     {canSee(['ADMIN', 'INTERN']) && (
                         <NavLink to="/dashboard/my-trainings" className={navLinkClass}>
-                            🏫 Lịch Đào Tạo
+                            📅 Lịch Đào Tạo
                         </NavLink>
                     )}
 
                     {/* Quản lý Đào tạo và Phỏng vấn: Dành cho COORDINATOR, ADMIN */}
                     {canSee(['ADMIN', 'COORDINATOR']) && (
                         <NavLink to="/dashboard/trainings" className={navLinkClass}>
-                            🏫 Khóa Đào Tạo
+                            🎓 Khóa Đào Tạo
                         </NavLink>
                     )}
-                    
+
                     {canSee(['ADMIN', 'COORDINATOR', 'HR']) && (
                         <NavLink to="/dashboard/interviews" className={navLinkClass}>
                             🗓️ Lịch Phỏng Vấn
@@ -137,11 +186,18 @@ export default function DashboardLayout() {
 
                 </nav>
 
-                <div className="p-4 border-t border-zinc-800">
+                <div className="p-4 border-t border-zinc-800 space-y-2">
+                    {/* Nút đổi mật khẩu */}
+                    <button
+                        onClick={() => setIsChangePasswordOpen(true)}
+                        className="w-full text-center block px-4 py-2 rounded-md text-zinc-300 font-medium hover:bg-zinc-800 transition-colors text-sm"
+                    >
+                        🔑 Đổi mật khẩu
+                    </button>
                     {/* Nút đăng xuất sẽ xóa sạch Token và Role */}
                     <button
                         onClick={handleLogout}
-                        className="w-full text-center block px-4 py-2 rounded-md text-red-400 font-medium hover:bg-zinc-800 transition-colors"
+                        className="w-full text-center block px-4 py-2 rounded-md text-red-400 font-medium hover:bg-zinc-800 transition-colors text-sm"
                     >
                         🚪 Đăng xuất
                     </button>
@@ -165,6 +221,69 @@ export default function DashboardLayout() {
                     <Outlet />
                 </main>
             </div>
+
+            {/* Dialog đổi mật khẩu */}
+            <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
+                <DialogContent className="sm:max-w-[420px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            🔑 Đổi Mật Khẩu
+                        </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleChangePassword} className="space-y-4 pt-2">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Mật khẩu hiện tại</label>
+                            <Input
+                                type="password"
+                                required
+                                value={oldPassword}
+                                onChange={(e) => setOldPassword(e.target.value)}
+                                placeholder="Nhập mật khẩu hiện tại"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Mật khẩu mới (tối thiểu 8 ký tự)</label>
+                            <Input
+                                type="password"
+                                required
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Nhập mật khẩu mới"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Xác nhận mật khẩu mới</label>
+                            <Input
+                                type="password"
+                                required
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="Nhập lại mật khẩu mới"
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-4 border-t">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsChangePasswordOpen(false)}
+                            >
+                                Hủy Bỏ
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isChangingPassword}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow"
+                            >
+                                {isChangingPassword ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : null}
+                                Đổi Mật Khẩu
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

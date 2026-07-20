@@ -158,6 +158,23 @@ async function initDB() {
         await pool.query(createFeedbacksTableQuery);
         console.log("✅ Đã tạo thành công bảng 'feedbacks'.");
 
+        // Tạo bảng messages để lưu lịch sử chat thời gian thực
+        const createMessagesTableQuery = `
+            CREATE TABLE IF NOT EXISTS messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                sender_id INT NOT NULL,
+                receiver_id INT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_chat_users (sender_id, receiver_id),
+                FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `;
+        await pool.query(createMessagesTableQuery);
+        console.log("✅ Đã tạo thành công bảng 'messages'.");
+
+
     } catch (error) {
         console.error("Lỗi khi tạo bảng ", error);
     } finally {
