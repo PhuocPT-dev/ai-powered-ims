@@ -1,8 +1,10 @@
 import pool from "../config/db";
+import { ResultSetHeader } from "mysql2/promise";
+import { TrainingProgramRow, InternTrainingRow } from "../types/database";
 
 export class TrainingService {
     static async getAllPrograms() {
-        const [programs]: any = await pool.query(
+        const [programs] = await pool.query<TrainingProgramRow[]>(
             `SELECT t.id, t.title, t.description, t.start_date, t.end_date, t.created_at, u.full_name as coordinator_name 
             FROM training_programs t
             LEFT JOIN users u ON t.coordinator_id = u.id
@@ -12,7 +14,7 @@ export class TrainingService {
     }
 
     static async createProgram(title: string, description: string, startDate: string, endDate: string, coordinatorId: number) {
-        const [result]: any = await pool.query(
+        const [result] = await pool.query<ResultSetHeader>(
             `INSERT INTO training_programs (title, description, start_date, end_date, coordinator_id)
             VALUES (?, ?, ?, ?, ?)`,
             [title, description, startDate, endDate, coordinatorId]
@@ -21,20 +23,15 @@ export class TrainingService {
     }
 
     static async getTrainingProgramInfo(trainingId: string) {
-        const [trainings]: any = await pool.query(
+        const [trainings] = await pool.query<TrainingProgramRow[]>(
             'SELECT id, coordinator_id FROM training_programs WHERE id = ?', 
             [trainingId]
         );
         return trainings.length > 0 ? trainings[0] : null;
     }
 
-    static async getUserRole(userId: number) {
-        const [users]: any = await pool.query('SELECT role FROM users WHERE id = ?', [userId]);
-        return users.length > 0 ? users[0].role : null;
-    }
-
     static async isInternEnrolled(internId: number, trainingId: string) {
-        const [existing]: any = await pool.query(
+        const [existing] = await pool.query<InternTrainingRow[]>(
             'SELECT id FROM intern_trainings WHERE intern_id = ? AND training_id = ?',
             [internId, trainingId]
         );
@@ -42,14 +39,14 @@ export class TrainingService {
     }
 
     static async enrollIntern(internId: number, trainingId: string) {
-        await pool.query(
+        await pool.query<ResultSetHeader>(
             `INSERT INTO intern_trainings (intern_id, training_id) VALUES (?, ?)`,
             [internId, trainingId]
         );
     }
 
     static async getProgramById(trainingId: string) {
-        const [programs]: any = await pool.query(
+        const [programs] = await pool.query<TrainingProgramRow[]>(
             `SELECT t.*, u.full_name as coordinator_name 
             FROM training_programs t
             LEFT JOIN users u ON t.coordinator_id = u.id
@@ -60,7 +57,7 @@ export class TrainingService {
     }
 
     static async getProgramMembers(trainingId: string) {
-        const [members]: any = await pool.query(
+        const [members] = await pool.query<InternTrainingRow[]>(
             `SELECT it.id as intern_training_id, it.status, it.enrolled_at,
             u.id as intern_id, u.full_name, u.email
             FROM intern_trainings it
@@ -73,7 +70,7 @@ export class TrainingService {
     }
 
     static async updateInternStatus(internTrainingId: string, status: string) {
-        const [result]: any = await pool.query(
+        const [result] = await pool.query<ResultSetHeader>(
             'UPDATE intern_trainings SET status = ? WHERE id = ?',
             [status, internTrainingId]
         );
@@ -81,12 +78,12 @@ export class TrainingService {
     }
 
     static async deleteProgram(trainingId: string) {
-        const [result]: any = await pool.query('DELETE FROM training_programs WHERE id = ?', [trainingId]);
+        const [result] = await pool.query<ResultSetHeader>('DELETE FROM training_programs WHERE id = ?', [trainingId]);
         return result.affectedRows > 0;
     }
 
     static async getInternTrainings(internId: number) {
-        const [programs]: any = await pool.query(
+        const [programs] = await pool.query<InternTrainingRow[]>(
             `SELECT it.id as intern_training_id, it.status, it.enrolled_at,
             t.id as program_id, t.title, t.description, t.start_date, t.end_date,
             u.full_name as coordinator_name, u.email as coordinator_email

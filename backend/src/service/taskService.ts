@@ -1,9 +1,11 @@
 import pool from "../config/db";
+import { ResultSetHeader } from "mysql2/promise";
 import { AppError } from "../utils/AppError";
+import { TaskRow } from "../types/database";
 
 export class TaskService {
     static async createTask(mentorId: number, internId: number, title: string, description: string, deadline: string) {
-        const [result]: any = await pool.query(
+        const [result] = await pool.query<ResultSetHeader>(
             'INSERT INTO tasks (title, description, mentor_id, intern_id, deadline) VALUES (?, ?, ?, ?, ?)',
             [title, description, mentorId, internId, deadline]
         );
@@ -11,7 +13,7 @@ export class TaskService {
     }
 
     static async getTasksByIntern(internId: number) {
-        const [rows] = await pool.query(
+        const [rows] = await pool.query<TaskRow[]>(
             `SELECT id, title, description, deadline, status, score, mentor_id 
              FROM tasks 
              WHERE intern_id = ? 
@@ -22,7 +24,7 @@ export class TaskService {
     }
 
     static async getTasksByMentor(mentorId: number) {
-        const [rows] = await pool.query(
+        const [rows] = await pool.query<TaskRow[]>(
             `SELECT t.id, t.title, t.description, t.deadline, t.status, t.score, t.intern_id, u.full_name as intern_name 
              FROM tasks t
              JOIN users u ON t.intern_id = u.id
@@ -39,7 +41,7 @@ export class TaskService {
             throw new AppError("Trạng thái không hợp lệ!", 400);
         }
 
-        const [result]: any = await pool.query(
+        const [result] = await pool.query<ResultSetHeader>(
             'UPDATE tasks SET status = ? WHERE id = ? AND intern_id = ?',
             [newStatus, taskId, internId]
         );
@@ -55,7 +57,7 @@ export class TaskService {
             throw new AppError("Điểm số phải từ 0 đến 100!", 400);
         }
 
-        const [tasks]: any = await pool.query(
+        const [tasks] = await pool.query<TaskRow[]>(
             'SELECT status FROM tasks WHERE id = ? AND mentor_id = ?',
             [taskId, mentorId]
         );
@@ -67,7 +69,7 @@ export class TaskService {
             throw new AppError("Intern chưa nộp bài (Task chưa DONE) nên không thể chấm điểm!", 400);
         }
         // Cập nhật điểm
-        const [result]: any = await pool.query(
+        const [result] = await pool.query<ResultSetHeader>(
             'UPDATE tasks SET status = "EVALUATED", score = ? WHERE id = ?',
             [score, taskId]
         );

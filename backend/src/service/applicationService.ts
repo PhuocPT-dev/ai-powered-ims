@@ -1,13 +1,15 @@
 import pool from "../config/db";
+import { ResultSetHeader } from "mysql2/promise";
 import { PDFService } from "../utils/pdf";
 import { AIService } from "../utils/ai";
 import { EmailService } from '../utils/email';
 import { AppError } from "../utils/AppError";
+import { ApplicationRow, UserRow } from "../types/database";
 
 export class ApplicationService {
     // lấy danh sách CV
     static async getApplicationsByJob(jobId: string) {
-        const [rows] = await pool.query(`
+        const [rows] = await pool.query<ApplicationRow[]>(`
             SELECT id, candidate_id, cv_url, ai_summary, ai_score, status, created_at
             FROM applications
             WHERE job_id = ?
@@ -18,7 +20,7 @@ export class ApplicationService {
     }
 
     static async getPendingApplications() {
-        const [rows] = await pool.query(`
+        const [rows] = await pool.query<ApplicationRow[]>(`
             SELECT a.id, a.status, u.full_name as candidate_name, j.title as job_title
             FROM applications a
             JOIN users u ON a.candidate_id = u.id
@@ -41,7 +43,7 @@ export class ApplicationService {
             aiScore = aiResult.score;
         }
         
-        const [result]: any = await pool.query(
+        const [result] = await pool.query<ResultSetHeader>(
             'INSERT INTO applications (job_id, candidate_id, cv_url, ai_summary, ai_score) VALUES (?,?,?,?,?)',
             [jobId, candidateId, cv_url, aiSummary, aiScore]
         );
@@ -57,7 +59,7 @@ export class ApplicationService {
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
-            const [applications]: any = await connection.query(
+            const [applications] = await connection.query<ApplicationRow[]>(
                 'SELECT candidate_id FROM applications WHERE id = ? FOR UPDATE',
                 [applicationId]
             );
@@ -65,17 +67,17 @@ export class ApplicationService {
                 throw new AppError("Không tìm thấy đơn xin việc này!", 404);
             }
             const candidateId = applications[0].candidate_id;
-            await connection.query(
+            await connection.query<ResultSetHeader>(
                 'UPDATE applications SET status = ? WHERE id = ? ',
                 [status, applicationId]
             );
             if (status === 'ACCEPTED') {
-                await connection.query(
+                await connection.query<ResultSetHeader>(
                     'UPDATE users SET role = "INTERN" WHERE id = ?',
                     [candidateId]
                 );
 
-                const [users]: any = await connection.query(
+                const [users] = await connection.query<UserRow[]>(
                     'SELECT email, full_name FROM users WHERE id = ?',
                     [candidateId]
                 );

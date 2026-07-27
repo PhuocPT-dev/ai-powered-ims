@@ -21,8 +21,8 @@ export class InterviewController {
 
         const appInfo = await InterviewService.getApplicationInfo(application_id);
 
-        if (!appInfo) {
-            throw new AppError("Không tìm thấy đơn ứng tuyển!", 404);
+        if (!appInfo || !appInfo.email) {
+            throw new AppError("Không tìm thấy đơn ứng tuyển hoặc email ứng viên!", 404);
         }
 
         await InterviewService.scheduleInterview(application_id, coordinator_id, interview_time, meeting_link);

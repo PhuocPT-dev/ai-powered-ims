@@ -7,8 +7,16 @@ import { internProfileSchema } from "../validators/internValidator";
 
 const router = Router();
 
-// Cho phép Intern tự tạo hồ sơ, hoặc ADMIN, HR, MENTOR tạo hộ bằng cách truyền thêm userId qua URL parameter
-router.post('/profile/:userId?',
+// Cho phép Intern tự tạo hồ sơ (không truyền userId)
+router.post('/profile',
+    authenticateJWT,
+    authorizeRoles('ADMIN', 'HR', 'MENTOR', 'INTERN'),
+    validate(internProfileSchema),
+    InternController.createProfile
+);
+
+// Cho phép ADMIN, HR, MENTOR tạo hộ bằng cách truyền thêm userId qua URL parameter
+router.post('/profile/:userId',
     authenticateJWT,
     authorizeRoles('ADMIN', 'HR', 'MENTOR', 'INTERN'),
     validate(internProfileSchema),

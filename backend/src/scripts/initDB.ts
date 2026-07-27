@@ -5,7 +5,7 @@ import pool from '../config/db';
 
 async function initDB() {
     try {
-        // câu lệnh SQL thuần tạo bảng Users
+        // 1. Bảng Users
         const createUsersTableQuery = `
             CREATE TABLE IF NOT EXISTS users(
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -15,13 +15,13 @@ async function initDB() {
                 phone VARCHAR(20),
                 role ENUM ('ADMIN', 'HR', 'COORDINATOR','MENTOR','CANDIDATE', 'INTERN') DEFAULT 'CANDIDATE',
                 is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )`;
-        // Ra lệnh cho MysQQL thực thi
         await pool.query(createUsersTableQuery);
-        console.log("✅ Đã tạo thành công bảng 'users' (hoặc bảng đã tồn tại).");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'users'.");
 
-        // Tạo bảng Jobs
+        // 2. Bảng Jobs
         const createJobsTableQuery = `
             CREATE TABLE IF NOT EXISTS jobs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -32,12 +32,13 @@ async function initDB() {
                 employer_id INT NOT NULL,
                 status ENUM('OPEN', 'CLOSED') DEFAULT 'OPEN',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (employer_id) REFERENCES users(id) ON DELETE CASCADE
-                )`
+            )`;
         await pool.query(createJobsTableQuery);
-        console.log("✅ Đã tạo thành công bảng 'jobs'.");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'jobs'.");
 
-        // Tạo bảng Applications(đơn nộp CV)
+        // 3. Bảng Applications
         const createApplicationsTableQuery = `
             CREATE TABLE IF NOT EXISTS applications (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -48,15 +49,15 @@ async function initDB() {
                 ai_summary TEXT,
                 status ENUM('PENDING','REVIEWING','ACCEPTED','REJECTED') DEFAULT 'PENDING',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_applications_candidate_job (candidate_id, job_id),
                 FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
                 FOREIGN KEY (candidate_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `
+            )`;
         await pool.query(createApplicationsTableQuery);
-        console.log("✅ Đã tạo thành công bảng 'applications'.");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'applications'.");
 
-        //Tạo bảng intern_profiles (Hồ sơ Thực tập sinh)
+        // 4. Bảng intern_profiles
         const createInternProfilesTableQuery = `
             CREATE TABLE IF NOT EXISTS intern_profiles (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -66,13 +67,14 @@ async function initDB() {
                 skills JSON,
                 emergency_contact VARCHAR(255),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_user_profile (user_id),
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `;
+            )`;
         await pool.query(createInternProfilesTableQuery);
-        console.log("✅ Đã tạo thành công bảng 'intern_profiles'.");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'intern_profiles'.");
 
-        // Tạo bảng interviews (phỏng vấn)
+        // 5. Bảng interviews
         const createInterviewsTableQuery = `
             CREATE TABLE IF NOT EXISTS interviews (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -82,14 +84,14 @@ async function initDB() {
                 meeting_link VARCHAR(255),
                 status ENUM('SCHEDULED', 'COMPLETED', 'CANCELED') DEFAULT 'SCHEDULED',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE,
                 FOREIGN KEY (coordinator_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `;
+            )`;
         await pool.query(createInterviewsTableQuery);
-        console.log("✅ Đã tạo thành công bảng 'interviews'.");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'interviews'.");
 
-        // Tạo bảng training_programs (danh sách khóa học)
+        // 6. Bảng training_programs
         const createTrainingProgramsQuery = `
             CREATE TABLE IF NOT EXISTS training_programs ( 
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -99,13 +101,13 @@ async function initDB() {
                 end_date DATE NOT NULL,
                 coordinator_id INT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (coordinator_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `;
+            )`;
         await pool.query(createTrainingProgramsQuery);
-        console.log("✅ Đã tạo thành công bảng 'training_programs'.");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'training_programs'.");
 
-        // Tạo bảng intern_trainings: Bảng điểm danh (Nối Intern với Khóa học).
+        // 7. Bảng intern_trainings
         const createInternTrainingsTableQuery = `
              CREATE TABLE IF NOT EXISTS intern_trainings (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -116,12 +118,11 @@ async function initDB() {
                 UNIQUE KEY unique_intern_training (intern_id, training_id),
                 FOREIGN KEY (intern_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (training_id) REFERENCES training_programs(id) ON DELETE CASCADE
-            )
-        `;
+            )`;
         await pool.query(createInternTrainingsTableQuery);
-        console.log("✅ Đã tạo thành công bảng 'intern_trainings'.");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'intern_trainings'.");
 
-        // Tạo bảng tasks 
+        // 8. Bảng tasks
         const createTasksTableQuery = `
             CREATE TABLE IF NOT EXISTS tasks (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -133,15 +134,15 @@ async function initDB() {
                 status ENUM('TODO', 'IN_PROGRESS', 'DONE', 'EVALUATED') DEFAULT 'TODO',
                 score INT DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_tasks_intern_status (intern_id, status),
-                 FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE,
-                 FOREIGN KEY (intern_id) REFERENCES users(id) ON DELETE CASCADE
-                )
-        `;
+                FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (intern_id) REFERENCES users(id) ON DELETE CASCADE
+            )`;
         await pool.query(createTasksTableQuery);
-        console.log("✅ Đã tạo thành công bảng 'tasks'.");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'tasks'.");
 
-        // Tạo bảng feedbacks
+        // 9. Bảng feedbacks
         const createFeedbacksTableQuery = `
             CREATE TABLE IF NOT EXISTS feedbacks (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -151,14 +152,14 @@ async function initDB() {
                 comment TEXT,
                 is_anonymous BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (intern_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `;
+            )`;
         await pool.query(createFeedbacksTableQuery);
-        console.log("✅ Đã tạo thành công bảng 'feedbacks'.");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'feedbacks'.");
 
-        // Tạo bảng messages để lưu lịch sử chat thời gian thực
+        // 10. Bảng messages
         const createMessagesTableQuery = `
             CREATE TABLE IF NOT EXISTS messages (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -169,18 +170,31 @@ async function initDB() {
                 INDEX idx_chat_users (sender_id, receiver_id),
                 FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `;
+            )`;
         await pool.query(createMessagesTableQuery);
-        console.log("✅ Đã tạo thành công bảng 'messages'.");
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'messages'.");
 
+        // 11. Bảng refresh_tokens
+        const createRefreshTokensTableQuery = `
+            CREATE TABLE IF NOT EXISTS refresh_tokens (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                token VARCHAR(500) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )`;
+        await pool.query(createRefreshTokensTableQuery);
+        console.log("✅ Đã tạo/kiểm tra thành công bảng 'refresh_tokens'.");
+
+        console.log("🎉 Hoàn tất kiểm tra và khởi tạo Database Schema!");
 
     } catch (error) {
-        console.error("Lỗi khi tạo bảng ", error);
+        console.error("Lỗi khi khởi tạo Database:", error);
     } finally {
-        process.exit(); // Tắt script sau khi chạy xong
+        process.exit();
     }
 }
 
-// chạy thử
+// Chạy script
 initDB();

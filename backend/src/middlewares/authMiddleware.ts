@@ -14,16 +14,21 @@ export interface AuthRequest extends Request {
 }
 
 export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction): void => {
-    const authHeader = req.header('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        res.status(401).json({ message: "Không tìm thấy Thẻ (Token). vui lòng đăng nhập!" });
-        return;
+    let token = req.cookies?.token;
+    if (!token) {
+        const authHeader = req.header('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            res.status(401).json({ message: "Không tìm thấy Thẻ (Token). vui lòng đăng nhập!" });
+            return;
+        }
+        // Cắt lấy chuỗi Token (Loại bỏ chữ Bearer ở đầu)
+        token = authHeader.split(' ')[1];
     }
 
-    // Cắt lấy chuỗi Token (Loại bỏ chữ Bearer ở đầu)
-    const token = authHeader.split(' ')[1];
-
+    if (!token) {
+        res.status(401).json({ message: "Không tìm thấy Thẻ (Token). Vui lòng đăng nhập!" });
+        return;
+    }
     try {
         if (!process.env.JWT_SECRET) {
             throw new Error('FATAL: JWT_SECRET is not defined in environment variables');

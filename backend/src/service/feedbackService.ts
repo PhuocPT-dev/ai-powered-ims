@@ -1,8 +1,10 @@
 import pool from "../config/db";
+import { ResultSetHeader } from "mysql2/promise";
+import { FeedbackRow, UserRow } from "../types/database";
 
 export class FeedbackService {
     static async createFeedback(internId: number, mentorId: number, rating: number, comment: string, isAnonymous: boolean) {
-        const [result]: any = await pool.query(
+        const [result] = await pool.query<ResultSetHeader>(
             `INSERT INTO feedbacks (intern_id, mentor_id, rating, comment, is_anonymous) 
              VALUES (?, ?, ?, ?, ?)`,
             [internId, mentorId, rating, comment, isAnonymous]
@@ -11,7 +13,7 @@ export class FeedbackService {
     }
 
     static async getFeedbacksByMentor(mentorId: string) {
-        const [feedbacks]: any = await pool.query(
+        const [feedbacks] = await pool.query<FeedbackRow[]>(
             `SELECT f.id, f.rating, f.comment, f.is_anonymous, f.created_at, 
             IF(f.is_anonymous = 1, 'Ẩn danh', u.full_name) as intern_name
             FROM feedbacks f
@@ -24,7 +26,7 @@ export class FeedbackService {
     }
 
     static async getMentors() {
-        const [mentors]: any = await pool.query("SELECT id, full_name, email FROM users WHERE role = 'MENTOR'");
+        const [mentors] = await pool.query<UserRow[]>("SELECT id, full_name, email FROM users WHERE role = 'MENTOR'");
         return mentors;
     }
 }

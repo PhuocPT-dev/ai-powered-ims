@@ -3,6 +3,7 @@ import { AuthRequest } from "../middlewares/authMiddleware";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { TrainingService } from "../service/trainingService";
+import { AuthService } from "../service/authService";
 
 export class TrainingController {
     static getAllPrograms = asyncHandler(async (req: Request, res: Response) => {
@@ -29,8 +30,8 @@ export class TrainingController {
         const trainingId = req.params.trainingId as string;
         const { intern_id } = req.body;
         
-        const role = await TrainingService.getUserRole(intern_id);
-        if (!role || role !== 'INTERN') {
+        const user = await AuthService.getUserById(intern_id);
+        if (!user || user.role !== 'INTERN') {
             throw new AppError("Bảo vệ: Người này không phải là Thực tập sinh, không thể cho vào lớp!", 400);
         }
 

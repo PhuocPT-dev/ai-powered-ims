@@ -2,7 +2,7 @@ import { Router } from "express";
 import { AuthController } from "../controllers/authController";
 import { authenticateJWT, authorizeRoles } from '../middlewares/authMiddleware';
 import { validate } from '../middlewares/validateMiddleware';
-import { registerSchema, loginSchema } from '../validators/authValidator';
+import { registerSchema, loginSchema, changePasswordSchema } from '../validators/authValidator';
 
 const router = Router();
 // Khai báo URL là /register. Phương thức là POST (vì có gửi dữ liệu bảo mật).
@@ -53,9 +53,12 @@ const loginLimiter = rateLimit({
 
 router.post('/register', validate(registerSchema), AuthController.register);
 router.post('/login', loginLimiter, validate(loginSchema), AuthController.login);
+router.post('/refresh', AuthController.refreshToken);
+
+
 
 // Chú ý: Ta kẹp anh bảo vệ 'authenticateJWT' đứng chắn giữa cái URL và cái Controller!
 router.get('/me', authenticateJWT, AuthController.getCurrentUser);
-
+router.post('/change-password', authenticateJWT, validate(changePasswordSchema), AuthController.changePassword);
 
 export default router;

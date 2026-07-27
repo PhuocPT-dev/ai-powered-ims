@@ -1,12 +1,14 @@
 import pool from "../config/db";
+import { ResultSetHeader } from "mysql2/promise";
+import { InterviewRow } from "../types/database";
 
 export class InterviewService {
     static async getApplicationInfo(applicationId: string) {
-        const [applications]: any = await pool.query(
+        const [applications] = await pool.query<InterviewRow[]>(
             `SELECT u.email, u.full_name, j.title FROM applications a
             JOIN users u ON a.candidate_id = u.id
-            JOIN jobs j ON  a.job_id = j.id
-            WHERE a.id= ?
+            JOIN jobs j ON a.job_id = j.id
+            WHERE a.id = ?
             `,
             [applicationId]
         );
@@ -14,7 +16,7 @@ export class InterviewService {
     }
 
     static async scheduleInterview(applicationId: string, coordinatorId: number, interviewTime: string, meetingLink: string) {
-        await pool.query(
+        await pool.query<ResultSetHeader>(
             `INSERT INTO interviews (application_id, coordinator_id, interview_time, meeting_link) 
             VALUES (?, ?, ?, ?)`,
             [applicationId, coordinatorId, interviewTime, meetingLink]
@@ -22,7 +24,7 @@ export class InterviewService {
     }
 
     static async getAllInterviews() {
-        const [interviews]: any = await pool.query(
+        const [interviews] = await pool.query<InterviewRow[]>(
             `SELECT i.id, i.interview_time, i.meeting_link, i.status, i.created_at,
             u.full_name as candidate_name, u.email as candidate_email,
             j.title as job_title
@@ -36,7 +38,7 @@ export class InterviewService {
     }
 
     static async getMyInterviews(candidateId: number) {
-        const [interviews]: any = await pool.query(
+        const [interviews] = await pool.query<InterviewRow[]>(
             `SELECT i.id, i.interview_time, i.meeting_link, i.status, i.created_at,
             j.title as job_title, u.full_name as coordinator_name
             FROM interviews i
@@ -51,8 +53,7 @@ export class InterviewService {
     }
 
     static async updateStatus(interviewId: string, status: string) {
-        // Có thể cần thêm cột status vào DB nếu chưa có (DEFAULT 'SCHEDULED')
-        const [result]: any = await pool.query(
+        const [result] = await pool.query<ResultSetHeader>(
             'UPDATE interviews SET status = ? WHERE id = ?',
             [status, interviewId]
         );
