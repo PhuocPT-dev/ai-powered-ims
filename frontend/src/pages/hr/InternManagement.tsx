@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { internApi } from "@/api/intern.api";
 import { analyticsApi } from "@/api/analytics.api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -31,53 +32,36 @@ interface InternKpi {
 }
 
 export default function InternManagement() {
-    const [interns, setInterns] = useState<Intern[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+    const [searchQuery, setSearchQuery] = useState("");
 
     // Profile detail dialog states
     const [selectedIntern, setSelectedIntern] = useState<Intern | null>(null);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [loadingProfile, setLoadingProfile] = useState(false);
-    const [profile, setProfile] = useState<Profile | null>(null);
-    const [kpi, setKpi] = useState<InternKpi | null>(null);
-    
-    // Skill Assessment edit states
     const [skillsInput, setSkillsInput] = useState("");
-    const [isSaving, setIsSaving] = useState(false);
 
-    const fetchInterns = async () => {
-        try {
+    // 1. useQuery lấy danh sách toàn bộ Intern
+    const { data: interns = [], isLoading: loading } = useQuery<Intern[]>({
+        queryKey: ['all-interns'],
+        queryFn: async () => {
             const res = await internApi.getAllInterns();
-            if (res.status === "success") {
-                setInterns(res.data);
-            }
-        } catch (error) {
-            toast.error("Không thể tải danh sách Intern. Vui lòng thử lại!");
-        } finally {
-            setLoading(false);
+            return res.status === 'success' ? res.data : [];
         }
-    };
+    });
 
-    useEffect(() => {
-        fetchInterns();
-    }, []);
-
-    const handleOpenProfile = async (intern: Intern) => {
-        setSelectedIntern(intern);
-        setIsProfileOpen(true);
-        setLoadingProfile(true);
-        setProfile(null);
-        setSkillsInput("");
-        setKpi(null);
-        
-        try {
+    // 2. useQuery lấy Chi tiết Profile & KPI của Intern đang chọn
+    const { data: internDetail, isLoading: loadingProfile } = useQuery<{ profile: Profile | null; kpi: InternKpi | null }>({
+        queryKey: ['intern-detail', selectedIntern?.id],
+        queryFn: async () => {
+            if (!selectedIntern) return { profile: null, kpi: null };
             const [profileRes, kpiRes] = await Promise.all([
-                internApi.getProfile(intern.id).catch(() => null),
-                analyticsApi.getInternKPI(intern.id).catch(() => null)
+                internApi.getProfile(selectedIntern.id).catch(() => null),
+                analyticsApi.getInternKPI(selectedIntern.id).catch(() => null)
             ]);
 
+            let profileData: Profile | null = null;
             if (profileRes && profileRes.status === "success" && profileRes.data) {
-                setProfile(profileRes.data);
+                profileData = profileRes.data;
                 const skillsData = profileRes.data.skills;
                 setSkillsInput(
                     Array.isArray(skillsData) 
@@ -85,60 +69,96 @@ export default function InternManagement() {
                         : (typeof skillsData === 'string' ? skillsData : "")
                 );
             } else {
-                setProfile({
-                    user_id: intern.id,
+                profileData = {
+                    user_id: selectedIntern.id,
                     university: "",
                     major: "",
                     skills: "",
                     emergency_contact: ""
-                });
+                };
+                setSkillsInput("");
             }
 
-            if (kpiRes && kpiRes.status === "success") {
-                setKpi(kpiRes.data);
-            }
-        } catch (error: any) {
-            toast.error("Lỗi khi tải thông tin hồ sơ!");
-        } finally {
-            setLoadingProfile(false);
-        }
-    };
+            const kpiData = (kpiRes && kpiRes.status === "success") ? kpiRes.data : null;
+            return { profile: profileData, kpi: kpiData };
+        },
+        enabled: !!selectedIntern && isProfileOpen
+    });
 
-    const handleSaveAssessment = async () => {
-        if (!selectedIntern || !profile) return;
-        setIsSaving(true);
-        try {
-            // Cập nhật hoặc Khởi tạo Profile mới
+    // 3. Mutation lưu / cập nhật Đánh giá kỹ năng (Skill Assessment)
+    const saveAssessmentMutation = useMutation({
+        mutationFn: async ({ internId, profile, skills }: { internId: number; profile: Profile | null; skills: string }) => {
             const payload = {
-                university: profile.university || "Chưa khai báo",
-                major: profile.major || "Chưa khai báo",
-                skills: skillsInput,
-                emergency_contact: profile.emergency_contact || "Chưa khai báo"
+                university: profile?.university || "Chưa khai báo",
+                major: profile?.major || "Chưa khai báo",
+                skills: skills,
+                emergency_contact: profile?.emergency_contact || "Chưa khai báo"
             };
-            
-            if (profile.id) {
-                // Nếu đã có Profile, gọi cập nhật
-                await internApi.updateProfile(selectedIntern.id, payload);
-            } else {
-                // Chưa có profile, thì tiến hành tạo mới thông qua api client đã bọc sẵn
-                await internApi.createProfile(selectedIntern.id, payload);
-            }
 
+            if (profile?.id) {
+                return await internApi.updateProfile(internId, payload);
+            } else {
+                return await internApi.createProfile(internId, payload);
+            }
+        },
+        onSuccess: () => {
             toast.success("Đánh giá kỹ năng (Skill Assessment) thành công!");
             setIsProfileOpen(false);
-            fetchInterns();
-        } catch (error: any) {
+            queryClient.invalidateQueries({ queryKey: ['all-interns'] });
+            queryClient.invalidateQueries({ queryKey: ['intern-detail', selectedIntern?.id] });
+        },
+        onError: (error: any) => {
             toast.error(error.response?.data?.message || "Có lỗi xảy ra khi lưu đánh giá!");
-        } finally {
-            setIsSaving(false);
         }
+    });
+
+    const filteredInterns = interns.filter((i) => {
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) return true;
+        return (
+            i.full_name.toLowerCase().includes(query) ||
+            i.email.toLowerCase().includes(query)
+        );
+    });
+
+    const handleOpenProfile = (intern: Intern) => {
+        setSelectedIntern(intern);
+        setIsProfileOpen(true);
     };
+
+    const handleSaveAssessment = () => {
+        if (!selectedIntern) return;
+        saveAssessmentMutation.mutate({
+            internId: selectedIntern.id,
+            profile: internDetail?.profile || null,
+            skills: skillsInput
+        });
+    };
+
+    const profile = internDetail?.profile;
+    const kpi = internDetail?.kpi;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
                 <h1 className="text-3xl font-bold text-slate-800">Quản lý Thực Tập Sinh</h1>
                 <p className="text-slate-500 mt-1">Xem chi tiết hồ sơ và đánh giá năng lực thực tập sinh định kỳ</p>
+            </div>
+
+            {/* Thanh Tìm Kiếm */}
+            <div className="flex items-center gap-4">
+                <Input
+                    type="text"
+                    placeholder="🔍 Tìm kiếm thực tập sinh theo tên hoặc email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-md bg-white shadow-sm"
+                />
+                {searchQuery && (
+                    <span className="text-xs text-slate-500 font-medium">
+                        Tìm thấy {filteredInterns.length} thực tập sinh
+                    </span>
+                )}
             </div>
 
             <Card className="shadow-sm border-gray-200">
@@ -162,10 +182,10 @@ export default function InternManagement() {
                         <tbody>
                             {loading ? (
                                 <tr><td colSpan={5} className="text-center py-10 text-slate-400">Đang tải...</td></tr>
-                            ) : interns.length === 0 ? (
-                                <tr><td colSpan={5} className="text-center py-10 text-slate-400">Chưa có Thực tập sinh nào.</td></tr>
+                            ) : filteredInterns.length === 0 ? (
+                                <tr><td colSpan={5} className="text-center py-10 text-slate-400 italic">Không tìm thấy thực tập sinh nào khớp với từ khóa tìm kiếm.</td></tr>
                             ) : (
-                                interns.map(intern => (
+                                filteredInterns.map(intern => (
                                     <tr key={intern.id} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
                                         <td className="px-6 py-4 text-slate-500 font-medium">#{intern.id}</td>
                                         <td className="px-6 py-4 font-bold text-slate-800">{intern.full_name}</td>
@@ -263,10 +283,10 @@ export default function InternManagement() {
 
                             <Button 
                                 onClick={handleSaveAssessment} 
-                                disabled={isSaving}
+                                disabled={saveAssessmentMutation.isPending}
                                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold gap-1.5 shadow"
                             >
-                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                {saveAssessmentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                                 Lưu Đánh Giá Kỹ Năng
                             </Button>
                         </div>

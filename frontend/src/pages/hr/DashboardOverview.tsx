@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Users, CheckCircle, Target, Trophy, Loader2, BarChart2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { analyticsApi } from "@/api/analytics.api";
-import { toast } from "sonner";
 
 interface DashboardStats {
     total_interns: number;
@@ -32,36 +31,35 @@ interface TrainingStat {
 }
 
 export default function DashboardOverview() {
-    const [stats, setStats] = useState<DashboardStats | null>(null);
-    const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
-    const [trainingStats, setTrainingStats] = useState<TrainingStat[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    // 1. useQuery lấy chỉ số Dashboard tổng quan
+    const { data: stats, isLoading: isStatsLoading } = useQuery<DashboardStats | null>({
+        queryKey: ['dashboard-stats'],
+        queryFn: async () => {
+            const res = await analyticsApi.getDashboardStats();
+            return res.status === 'success' ? res.data : null;
+        }
+    });
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const [dashRes, monthRes, trainRes] = await Promise.all([
-                    analyticsApi.getDashboardStats(),
-                    analyticsApi.getMonthlyStats(),
-                    analyticsApi.getTrainingStats()
-                ]);
-                
-                if (dashRes.status === 'success') setStats(dashRes.data);
-                if (monthRes.status === 'success') {
-                    // API trả về giảm dần (DESC), ta cần đảo ngược lại để vẽ biểu đồ từ trái sang phải
-                    setMonthlyStats(monthRes.data.reverse());
-                }
-                if (trainRes.status === 'success') setTrainingStats(trainRes.data);
-                
-            } catch (error) {
-                toast.error("Lỗi khi tải dữ liệu thống kê từ máy chủ!");
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    // 2. useQuery lấy dữ liệu thống kê theo tháng
+    const { data: monthlyStats = [], isLoading: isMonthlyLoading } = useQuery<MonthlyStat[]>({
+        queryKey: ['monthly-stats'],
+        queryFn: async () => {
+            const res = await analyticsApi.getMonthlyStats();
+            // Đảo ngược thứ tự để vẽ biểu đồ từ trái qua phải
+            return res.status === 'success' ? res.data.reverse() : [];
+        }
+    });
 
-        fetchStats();
-    }, []);
+    // 3. useQuery lấy dữ liệu khóa đào tạo
+    const { data: trainingStats = [], isLoading: isTrainingLoading } = useQuery<TrainingStat[]>({
+        queryKey: ['training-stats'],
+        queryFn: async () => {
+            const res = await analyticsApi.getTrainingStats();
+            return res.status === 'success' ? res.data : [];
+        }
+    });
+
+    const isLoading = isStatsLoading || isMonthlyLoading || isTrainingLoading;
 
     if (isLoading) {
         return (
@@ -81,7 +79,7 @@ export default function DashboardOverview() {
                 <p className="text-gray-500 mt-1">Cái nhìn toàn cảnh về hệ thống Thực tập sinh của bạn.</p>
             </div>
 
-            {/* Tạo 3 cái hộp vuông nhỏ hiển thị số liệu */}
+            {/* 3 thẻ chỉ số tổng quan */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">

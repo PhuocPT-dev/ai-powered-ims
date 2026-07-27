@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,39 +7,42 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { jobApi } from "@/api/job.api";
 
-// Lần này ta truyền thêm hàm refreshJobs từ ngoài vào Hộp thoại.
-// Để chi? Để khi đăng tin xong, hộp thoại này gọi hàm đó, bắt cái Bảng ngoài kia phải tải lại dữ liệu mới!
-export function CreateJobDialog({ refreshJobs }: { refreshJobs: () => void }) {
+export function CreateJobDialog({ refreshJobs }: { refreshJobs?: () => void }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false)
+    const queryClient = useQueryClient();
 
     const [formData, setFormData] = useState({
         title: "",
         location: "",
         salary: "",
         description: ""
-    })
+    });
 
-    const handleSubmit = async () => {
+    // 1. Dùng useMutation để xử lý hành động Tạo tin tuyển dụng mới (POST API)
+    const createJobMutation = useMutation({
+        mutationFn: (data: typeof formData) => jobApi.createJob(data),
+        onSuccess: (response) => {
+            if (response.status === "success") {
+                toast.success("Đăng tin tuyển dụng thành công!");
+                setIsOpen(false);
+                setFormData({ title: "", location: "", salary: "", description: "" });
+            }
+            // Tự động làm mới cache danh sách việc làm 'jobs'
+            queryClient.invalidateQueries({ queryKey: ['jobs'] });
+            if (refreshJobs) refreshJobs();
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || "Lỗi khi đăng tin!");
+        }
+    });
+
+    const handleSubmit = () => {
         if (!formData.title || !formData.description) {
             toast.error("Vui lòng nhập Tên công việc và Mô tả!");
             return;
         }
-        setIsLoading(true);
-        try {
-            const response = await jobApi.createJob(formData);
-            if (response.status === "success") {
-                toast.success("Đang tin tuyển dunng thành công!");
-                setIsOpen(false);
-                setFormData({ title: "", location: "", salary: "", description: "" })
-            }
-            refreshJobs();
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || "Lỗi khi đăng tin!");
-        } finally {
-            setIsLoading(false);
-        }
-    }
+        createJobMutation.mutate(formData);
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -86,7 +90,6 @@ export function CreateJobDialog({ refreshJobs }: { refreshJobs: () => void }) {
                     </div>
                     <div className="grid gap-2">
                         <Label>Mô Tả Chi Tiết (*)</Label>
-                        {/* Dùng thẻ textarea mặc định của HTML cho nhanh */}
                         <textarea
                             className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             placeholder="Yêu cầu công việc, quyền lợi..."
@@ -98,8 +101,12 @@ export function CreateJobDialog({ refreshJobs }: { refreshJobs: () => void }) {
 
                 <div className="flex justify-end space-x-2">
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Hủy</Button>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSubmit} disabled={isLoading}>
-                        {isLoading ? "Đang đăng..." : "Đăng Tin Ngay"}
+                    <Button 
+                        className="bg-blue-600 hover:bg-blue-700 text-white" 
+                        onClick={handleSubmit} 
+                        disabled={createJobMutation.isPending}
+                    >
+                        {createJobMutation.isPending ? "Đang đăng..." : "Đăng Tin Ngay"}
                     </Button>
                 </div>
             </DialogContent>

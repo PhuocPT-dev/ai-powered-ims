@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
 import { feedbackApi } from "@/api/feedback.api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MessageSquare, Star, Users, TrendingUp } from "lucide-react";
-import { toast } from "sonner";
 
 interface Feedback {
     id: number;
@@ -23,67 +23,44 @@ interface Mentor {
 
 export default function FeedbackOverview() {
     const { user } = useAuthStore();
-    const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
-    const [mentors, setMentors] = useState<Mentor[]>([]);
     const [selectedMentorId, setSelectedMentorId] = useState<string>("");
-    const [isLoading, setIsLoading] = useState(true);
     const [ratingFilter, setRatingFilter] = useState<number | "ALL">("ALL");
 
     const isManagement = user?.role === "ADMIN" || user?.role === "HR" || user?.role === "COORDINATOR";
 
-    // Hàm lấy danh sách phản hồi của Mentor cụ thể
-    const fetchFeedbacks = async (mentorId: string | number) => {
-        setIsLoading(true);
-        try {
-            const res = await feedbackApi.getMentorFeedbacks(mentorId);
-            if (res.status === "success") {
-                setFeedbacks(res.data);
-            }
-        } catch (error) {
-            toast.error("Không thể tải danh sách nhận xét!");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    // 1. useQuery lấy danh sách Mentors (chỉ dành cho Quản trị viên/HR/Coordinator)
+    const { data: mentors = [] } = useQuery<Mentor[]>({
+        queryKey: ['mentors-list'],
+        queryFn: async () => {
+            return await feedbackApi.getMentorsForFeedback();
+        },
+        enabled: isManagement
+    });
 
-    // Khởi tạo trang
+    // Tự động set mặc định mentor đầu tiên nếu là Management hoặc là chính mình nếu là Mentor
     useEffect(() => {
-        const initData = async () => {
-            if (!user) return;
-            try {
-                if (isManagement) {
-                    // Nếu là Admin/HR/Coordinator, lấy danh sách các Mentor
-                    const mentorsData = await feedbackApi.getMentorsForFeedback();
-                    setMentors(mentorsData);
-                    if (mentorsData.length > 0) {
-                        setSelectedMentorId(String(mentorsData[0].id));
-                        await fetchFeedbacks(mentorsData[0].id);
-                    } else {
-                        setIsLoading(false);
-                    }
-                } else if (user.role === "MENTOR") {
-                    // Nếu chính là Mentor, lấy feedback của bản thân họ
-                    setSelectedMentorId(String(user.id));
-                    await fetchFeedbacks(user.id);
-                }
-            } catch (error) {
-                toast.error("Lỗi khi tải dữ liệu ban đầu!");
-                setIsLoading(false);
+        if (!selectedMentorId) {
+            if (isManagement && mentors.length > 0) {
+                setSelectedMentorId(String(mentors[0].id));
+            } else if (user?.role === "MENTOR" && user?.id) {
+                setSelectedMentorId(String(user.id));
             }
-        };
-
-        initData();
-    }, [user, isManagement]);
-
-    // Thay đổi Mentor được chọn (Dành cho Quản trị viên/HR)
-    const handleMentorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        setSelectedMentorId(val);
-        if (val) {
-            fetchFeedbacks(val);
-        } else {
-            setFeedbacks([]);
         }
+    }, [mentors, isManagement, user, selectedMentorId]);
+
+    // 2. useQuery lấy danh sách Phản hồi của Mentor được chọn
+    const { data: feedbacks = [], isLoading } = useQuery<Feedback[]>({
+        queryKey: ['mentor-feedbacks', selectedMentorId],
+        queryFn: async () => {
+            if (!selectedMentorId) return [];
+            const res = await feedbackApi.getMentorFeedbacks(selectedMentorId);
+            return res.status === "success" ? res.data : [];
+        },
+        enabled: !!selectedMentorId
+    });
+
+    const handleMentorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedMentorId(e.target.value);
     };
 
     // Lọc theo rating
@@ -213,7 +190,7 @@ export default function FeedbackOverview() {
                         </Card>
                     </div>
 
-                    {/* Cột phải: Danh sách Feedbacks (Chiếm 2/3) */}
+                    {/* Cột phải: Danh sách Feedbacks */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Thanh bộ lọc điểm số */}
                         <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-150">
@@ -252,7 +229,6 @@ export default function FeedbackOverview() {
                                 </div>
                             ) : (
                                 filteredFeedbacks.map((fb) => {
-                                    // Kiểm tra an toàn cho is_anonymous (số hoặc boolean)
                                     const isAnon = Boolean(fb.is_anonymous);
 
                                     return (
@@ -299,7 +275,7 @@ export default function FeedbackOverview() {
 
                                                 {/* Nhận xét chi tiết */}
                                                 <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap pl-10 border-l-2 border-slate-100 italic">
-                                                    "{fb.comment}"
+                                                    {`"${fb.comment}"`}
                                                 </p>
                                             </CardContent>
                                         </Card>

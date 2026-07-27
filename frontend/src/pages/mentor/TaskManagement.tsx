@@ -1,20 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { ClipboardList, PlusCircle, Clock, CheckCircle, AlertCircle, PlayCircle } from "lucide-react";
+import { ClipboardList, PlusCircle, Clock, CheckCircle, AlertCircle, PlayCircle, Loader2 } from "lucide-react";
 import { taskApi, type Task } from "@/api/task.api";
 import { internApi } from "@/api/intern.api";
 import { toast } from "sonner";
 
 export default function TaskManagement() {
-    // State danh sách
-    const [tasks, setTasks] = useState<(Task & { intern_name?: string })[]>([]);
-    const [interns, setInterns] = useState<{ id: number; full_name: string }[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const queryClient = useQueryClient();
 
     // State Modal Chấm Điểm
     const [isEvaluateModalOpen, setIsEvaluateModalOpen] = useState(false);
@@ -30,68 +28,72 @@ export default function TaskManagement() {
         deadline: ""
     });
 
-    // Hàm gọi API lấy danh sách Task
-    const fetchTasks = async () => {
-        try {
-            setIsLoading(true);
+    // 1. useQuery lấy danh sách Task của Mentor giao
+    const { data: tasks = [], isLoading: isTasksLoading } = useQuery<(Task & { intern_name?: string })[]>({
+        queryKey: ['mentor-tasks'],
+        queryFn: async () => {
             const response = await taskApi.getMentorTasks();
-            setTasks(response.data);
-        } catch (error) {
-            toast.error("Không thể tải danh sách công việc!");
-        } finally {
-            setIsLoading(false);
+            return response.data;
         }
-    };
+    });
 
-    // Hàm gọi API lấy danh sách Intern để đổ vào thẻ Select
-    const fetchInterns = async () => {
-        try {
+    // 2. useQuery lấy danh sách Intern để chọn ở Dropdown
+    const { data: interns = [] } = useQuery<{ id: number; full_name: string }[]>({
+        queryKey: ['interns-list'],
+        queryFn: async () => {
             const res = await internApi.getAllInterns();
-            setInterns(res.data);
-        } catch (error) {
-            toast.error("Không thể tải danh sách Intern. Vui lòng thử lại!");
+            return res.data;
         }
-    };
+    });
 
-    // Chạy khi mở trang
-    useEffect(() => {
-        fetchTasks();
-        fetchInterns();
-    }, []);
-
-    // Xử lý Giao việc
-    const handleCreateTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await taskApi.createTask({
-                title: newTask.title,
-                description: newTask.description,
-                intern_id: Number(newTask.intern_id),
-                deadline: newTask.deadline
-            });
+    // 3. Mutation: Giao công việc mới
+    const createTaskMutation = useMutation({
+        mutationFn: (taskData: { title: string; description: string; intern_id: number; deadline: string }) =>
+            taskApi.createTask(taskData),
+        onSuccess: () => {
             toast.success("Đã giao việc thành công!");
-            setIsCreateModalOpen(false); // Đóng Modal
-            setNewTask({ title: "", description: "", intern_id: "", deadline: "" }); // Xóa sạch form
-            fetchTasks(); // Load lại bảng
-        } catch (error: any) {
+            setIsCreateModalOpen(false);
+            setNewTask({ title: "", description: "", intern_id: "", deadline: "" });
+            queryClient.invalidateQueries({ queryKey: ['mentor-tasks'] });
+        },
+        onError: (error: any) => {
             toast.error(error.response?.data?.message || "Lỗi khi giao việc!");
         }
-    };
+    });
 
-    // Xử lý Chấm điểm
-    const handleEvaluateTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!evaluatingTask) return;
-        try {
-            await taskApi.evaluateTask(evaluatingTask.id, Number(score));
+    // 4. Mutation: Chấm điểm công việc
+    const evaluateTaskMutation = useMutation({
+        mutationFn: ({ taskId, score }: { taskId: number; score: number }) =>
+            taskApi.evaluateTask(taskId, score),
+        onSuccess: () => {
             toast.success("Đã nghiệm thu và chấm điểm thành công!");
             setIsEvaluateModalOpen(false);
             setEvaluatingTask(null);
             setScore("");
-            fetchTasks(); // Load lại bảng
-        } catch (error: any) {
+            queryClient.invalidateQueries({ queryKey: ['mentor-tasks'] });
+        },
+        onError: (error: any) => {
             toast.error(error.response?.data?.message || "Lỗi khi chấm điểm!");
         }
+    });
+
+    const handleCreateTask = (e: React.FormEvent) => {
+        e.preventDefault();
+        createTaskMutation.mutate({
+            title: newTask.title,
+            description: newTask.description,
+            intern_id: Number(newTask.intern_id),
+            deadline: newTask.deadline
+        });
+    };
+
+    const handleEvaluateTask = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!evaluatingTask) return;
+        evaluateTaskMutation.mutate({
+            taskId: evaluatingTask.id,
+            score: Number(score)
+        });
     };
 
     const openEvaluateModal = (task: Task) => {
@@ -119,7 +121,7 @@ export default function TaskManagement() {
                     <p className="text-muted-foreground mt-1">Theo dõi tiến độ và giao việc cho Thực tập sinh</p>
                 </div>
 
-                {/* --- MODAL GIAO VIỆC NẰM Ở ĐÂY --- */}
+                {/* MODAL GIAO VIỆC */}
                 <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
                     <DialogTrigger asChild>
                         <Button className="bg-blue-600 hover:bg-blue-700 shadow-md">
@@ -131,13 +133,11 @@ export default function TaskManagement() {
                             <DialogTitle className="text-xl text-slate-800">🚀 Giao Công Việc Mới</DialogTitle>
                         </DialogHeader>
 
-                        {/* Form nhập liệu */}
                         <form onSubmit={handleCreateTask} className="space-y-4 py-2">
                             <div className="space-y-2">
                                 <Label>Người nhận (Intern) <span className="text-red-500">*</span></Label>
-                                {/* Dùng thẻ select mặc định nhưng phủ Class của Tailwind để đẹp như Shadcn */}
                                 <select
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                     value={newTask.intern_id}
                                     onChange={(e) => setNewTask({ ...newTask, intern_id: e.target.value })}
                                     required
@@ -160,7 +160,7 @@ export default function TaskManagement() {
                             <div className="space-y-2">
                                 <Label>Mô tả chi tiết <span className="text-red-500">*</span></Label>
                                 <textarea
-                                    className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                     placeholder="Yêu cầu cụ thể, tài liệu tham khảo..."
                                     value={newTask.description}
                                     onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
@@ -181,16 +181,15 @@ export default function TaskManagement() {
                                 <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
                                     Hủy bỏ
                                 </Button>
-                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                                    Giao việc ngay
+                                <Button type="submit" disabled={createTaskMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
+                                    {createTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Giao việc ngay
                                 </Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>
                 </Dialog>
-                {/* ------------------------------- */}
 
-                {/* --- MODAL CHẤM ĐIỂM NẰM Ở ĐÂY --- */}
+                {/* MODAL CHẤM ĐIỂM */}
                 <Dialog open={isEvaluateModalOpen} onOpenChange={setIsEvaluateModalOpen}>
                     <DialogContent className="sm:max-w-[400px]">
                         <DialogHeader>
@@ -220,19 +219,17 @@ export default function TaskManagement() {
                                     <Button type="button" variant="outline" onClick={() => setIsEvaluateModalOpen(false)}>
                                         Hủy bỏ
                                     </Button>
-                                    <Button type="submit" className="bg-yellow-600 hover:bg-yellow-700 text-white">
-                                        Hoàn tất chấm điểm
+                                    <Button type="submit" disabled={evaluateTaskMutation.isPending} className="bg-yellow-600 hover:bg-yellow-700 text-white">
+                                        {evaluateTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Hoàn tất chấm điểm
                                     </Button>
                                 </DialogFooter>
                             </form>
                         )}
                     </DialogContent>
                 </Dialog>
-                {/* ------------------------------- */}
-
             </div>
 
-            {/* Bảng dữ liệu (Giữ nguyên như Cũ) */}
+            {/* Bảng dữ liệu */}
             <Card className="shadow-sm border-slate-200">
                 <CardHeader className="bg-slate-50 border-b border-slate-100 pb-4">
                     <CardTitle className="text-lg flex items-center text-slate-700">
@@ -253,7 +250,7 @@ export default function TaskManagement() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {isLoading ? (
+                                {isTasksLoading ? (
                                     <tr><td colSpan={5} className="text-center py-10 text-slate-500">Đang tải dữ liệu...</td></tr>
                                 ) : tasks.length === 0 ? (
                                     <tr><td colSpan={5} className="text-center py-10 text-slate-500">Bạn chưa giao công việc nào.</td></tr>

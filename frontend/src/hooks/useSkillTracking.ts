@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
 import { internApi } from "@/api/intern.api";
 import { feedbackApi } from "@/api/feedback.api";
@@ -27,105 +28,148 @@ interface InternKpi {
 
 export function useSkillTracking() {
     const { user } = useAuthStore();
-    const [profile, setProfile] = useState<Profile | null>(null);
-    const [mentors, setMentors] = useState<Mentor[]>([]);
-    const [loadingProfile, setLoadingProfile] = useState(true);
-    const [kpi, setKpi] = useState<InternKpi | null>(null);
-    const [loadingKpi, setLoadingKpi] = useState(true);
+    const queryClient = useQueryClient();
 
     // AI suggestions states
     const [aiSuggestions, setAiSuggestions] = useState<string>("");
-    const [loadingAI, setLoadingAI] = useState(false);
 
     // Feedback states
     const [selectedMentorId, setSelectedMentorId] = useState<number | "">("");
     const [rating, setRating] = useState<number>(5);
     const [comment, setComment] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(false);
-    const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
-    useEffect(() => {
-        const loadInitialData = async () => {
-            if (!user?.id) return;
-            
-            // Tải thông tin KPI thực tập sinh
-            try {
-                const kpiRes = await analyticsApi.getInternKPI(user.id);
-                if (kpiRes.status === "success") {
-                    setKpi(kpiRes.data);
-                }
-            } catch (error) {
-                console.error("Lỗi tải KPI thực tập sinh");
-            } finally {
-                setLoadingKpi(false);
-            }
+    // Edit Profile states
+    const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+    const [editUniversity, setEditUniversity] = useState("");
+    const [editMajor, setEditMajor] = useState("");
+    const [editSkills, setEditSkills] = useState("");
+    const [editEmergencyContact, setEditEmergencyContact] = useState("");
 
-            // Tải thông tin Profile
-            try {
-                const profileRes = await internApi.getProfile(user.id);
-                if (profileRes.status === "success") {
-                    setProfile(profileRes.data);
-                }
-            } catch (error) {
-                console.error("Chưa tạo profile hoặc lỗi tải profile");
-            } finally {
-                setLoadingProfile(false);
-            }
+    // 1. useQuery lấy KPI cá nhân
+    const { data: kpi = null, isLoading: loadingKpi } = useQuery<InternKpi | null>({
+        queryKey: ['my-kpi', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return null;
+            const res = await analyticsApi.getInternKPI(user.id);
+            return res.status === "success" ? res.data : null;
+        },
+        enabled: !!user?.id
+    });
 
-            try {
-                // Tải danh sách Mentor để gửi Feedback
-                const mentorsRes = await feedbackApi.getMentorsForFeedback();
-                setMentors(mentorsRes);
-            } catch (error) {
-                toast.error("Không thể tải danh sách Mentor!");
-            }
-        };
+    // 2. useQuery lấy Hồ sơ Profile cá nhân
+    const { data: profile = null, isLoading: loadingProfile } = useQuery<Profile | null>({
+        queryKey: ['my-profile', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return null;
+            const res = await internApi.getProfile(user.id);
+            return res.status === "success" ? res.data : null;
+        },
+        enabled: !!user?.id
+    });
 
-        loadInitialData();
-    }, [user]);
+    // 3. useQuery lấy danh sách Mentor để gửi Feedback
+    const { data: mentors = [] } = useQuery<Mentor[]>({
+        queryKey: ['mentors-for-feedback'],
+        queryFn: async () => {
+            return await feedbackApi.getMentorsForFeedback();
+        }
+    });
 
-    const handleGetAISuggestions = async () => {
-        setLoadingAI(true);
-        try {
-            const res = await internApi.getAISkillSuggestions();
+    // 4. Mutation gọi cố vấn AI
+    const aiSuggestionsMutation = useMutation({
+        mutationFn: () => internApi.getAISkillSuggestions(),
+        onSuccess: (res) => {
             if (res.status === "success") {
                 setAiSuggestions(res.data.suggestion);
                 toast.success("AI đã phân tích và gợi ý lộ trình thành công!");
             }
-        } catch (error: any) {
+        },
+        onError: (error: any) => {
             toast.error(error.response?.data?.message || "Lỗi khi gọi cố vấn AI!");
-        } finally {
-            setLoadingAI(false);
         }
-    };
+    });
 
-    const handleSubmitFeedback = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedMentorId) {
-            return toast.error("Vui lòng chọn Mentor cần đánh giá!");
-        }
-        if (!comment.trim()) {
-            return toast.error("Vui lòng nhập nội dung đánh giá!");
-        }
-
-        setSubmittingFeedback(true);
-        try {
-            await feedbackApi.submitFeedback({
-                mentor_id: Number(selectedMentorId),
-                rating,
-                comment,
-                is_anonymous: isAnonymous
-            });
+    // 5. Mutation gửi đánh giá Mentor
+    const submitFeedbackMutation = useMutation({
+        mutationFn: (payload: { mentor_id: number; rating: number; comment: string; is_anonymous: boolean }) =>
+            feedbackApi.submitFeedback(payload),
+        onSuccess: () => {
             toast.success("Gửi đánh giá thành công! Cảm ơn ý kiến của bạn.");
             setComment("");
             setSelectedMentorId("");
             setRating(5);
             setIsAnonymous(false);
-        } catch (error: any) {
+        },
+        onError: (error: any) => {
             toast.error(error.response?.data?.message || "Lỗi khi gửi đánh giá!");
-        } finally {
-            setSubmittingFeedback(false);
         }
+    });
+
+    // 6. Mutation lưu/cập nhật Profile cá nhân
+    const saveProfileMutation = useMutation({
+        mutationFn: async (data: { university: string; major: string; skills: string; emergency_contact: string }) => {
+            if (!user?.id) return;
+            if (profile) {
+                return await internApi.updateProfile(user.id, data);
+            } else {
+                return await internApi.createProfile(user.id, data);
+            }
+        },
+        onSuccess: () => {
+            toast.success("Cập nhật hồ sơ cá nhân thành công!");
+            setIsEditProfileOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['my-profile', user?.id] });
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || "Lỗi khi lưu thông tin hồ sơ!");
+        }
+    });
+
+    const handleGetAISuggestions = () => {
+        aiSuggestionsMutation.mutate();
+    };
+
+    const handleSubmitFeedback = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedMentorId) return toast.error("Vui lòng chọn Mentor cần đánh giá!");
+        if (!comment.trim()) return toast.error("Vui lòng nhập nội dung đánh giá!");
+
+        submitFeedbackMutation.mutate({
+            mentor_id: Number(selectedMentorId),
+            rating,
+            comment,
+            is_anonymous: isAnonymous
+        });
+    };
+
+    const handleOpenEditProfile = () => {
+        if (profile) {
+            setEditUniversity(profile.university || "");
+            setEditMajor(profile.major || "");
+            setEditSkills(
+                Array.isArray(profile.skills) 
+                    ? profile.skills.join(', ') 
+                    : (profile.skills || "")
+            );
+            setEditEmergencyContact(profile.emergency_contact || "");
+        } else {
+            setEditUniversity("");
+            setEditMajor("");
+            setEditSkills("");
+            setEditEmergencyContact("");
+        }
+        setIsEditProfileOpen(true);
+    };
+
+    const handleSaveProfile = (e: React.FormEvent) => {
+        e.preventDefault();
+        saveProfileMutation.mutate({
+            university: editUniversity,
+            major: editMajor,
+            skills: editSkills,
+            emergency_contact: editEmergencyContact
+        });
     };
 
     return {
@@ -135,7 +179,7 @@ export function useSkillTracking() {
         kpi,
         loadingKpi,
         aiSuggestions,
-        loadingAI,
+        loadingAI: aiSuggestionsMutation.isPending,
         selectedMentorId,
         setSelectedMentorId,
         rating,
@@ -144,8 +188,21 @@ export function useSkillTracking() {
         setComment,
         isAnonymous,
         setIsAnonymous,
-        submittingFeedback,
+        submittingFeedback: submitFeedbackMutation.isPending,
         handleGetAISuggestions,
-        handleSubmitFeedback
+        handleSubmitFeedback,
+        isEditProfileOpen,
+        setIsEditProfileOpen,
+        editUniversity,
+        setEditUniversity,
+        editMajor,
+        setEditMajor,
+        editSkills,
+        setEditSkills,
+        editEmergencyContact,
+        setEditEmergencyContact,
+        isSavingProfile: saveProfileMutation.isPending,
+        handleOpenEditProfile,
+        handleSaveProfile
     };
 }

@@ -2,8 +2,10 @@ import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Brain, Star, Send, Award, MessageSquare, AlertCircle } from "lucide-react";
+import { Loader2, Brain, Star, Send, Award, MessageSquare, AlertCircle, User, Edit3 } from "lucide-react";
 import { useSkillTracking } from "@/hooks/useSkillTracking";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function SkillTracking() {
     const {
@@ -24,7 +26,20 @@ export default function SkillTracking() {
         setIsAnonymous,
         submittingFeedback,
         handleGetAISuggestions,
-        handleSubmitFeedback
+        handleSubmitFeedback,
+        isEditProfileOpen,
+        setIsEditProfileOpen,
+        editUniversity,
+        setEditUniversity,
+        editMajor,
+        setEditMajor,
+        editSkills,
+        setEditSkills,
+        editEmergencyContact,
+        setEditEmergencyContact,
+        isSavingProfile,
+        handleOpenEditProfile,
+        handleSaveProfile
     } = useSkillTracking();
 
     if (loadingProfile) {
@@ -82,15 +97,23 @@ export default function SkillTracking() {
             )}
 
             {!profile ? (
-                <Card className="border-amber-200 bg-amber-50">
-                    <CardContent className="pt-6 flex items-start gap-4">
-                        <AlertCircle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                            <h3 className="font-bold text-amber-800">Bạn chưa khởi tạo Hồ Sơ Cá Nhân!</h3>
-                            <p className="text-amber-700 text-sm mt-1">
-                                Vui lòng liên hệ HR hoặc Admin để thiết lập thông tin Hồ sơ thực tập sinh (Trường học, Chuyên ngành, Kỹ năng) trước khi nhận gợi ý định hướng lộ trình học tập từ Trí tuệ nhân tạo AI.
-                            </p>
+                <Card className="border-amber-200 bg-amber-50 shadow-sm">
+                    <CardContent className="pt-6 flex items-start justify-between gap-4 flex-wrap">
+                        <div className="flex items-start gap-4">
+                            <AlertCircle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                                <h3 className="font-bold text-amber-800 text-base">Bạn chưa khởi tạo Hồ Sơ Thực Tập!</h3>
+                                <p className="text-amber-700 text-sm mt-1">
+                                    Vui lòng khởi tạo thông tin hồ sơ (Trường học, Chuyên ngành, Kỹ năng) để bắt đầu sử dụng các tính năng theo dõi tiến độ và định hướng AI.
+                                </p>
+                            </div>
                         </div>
+                        <Button 
+                            onClick={handleOpenEditProfile} 
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm ml-auto"
+                        >
+                            ✨ Khởi Tạo Hồ Sơ Ngay
+                        </Button>
                     </CardContent>
                 </Card>
             ) : null}
@@ -98,6 +121,42 @@ export default function SkillTracking() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Cột trái: Kỹ năng & AI suggestions (Chiếm 2 phần) */}
                 <div className="lg:col-span-2 space-y-6">
+                    {profile && (
+                        <Card className="shadow-sm border-gray-200 animate-in slide-in-from-left duration-300">
+                            <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
+                                <div>
+                                    <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                        <User className="h-5 w-5 text-indigo-500" />
+                                        Thông Tin Học Vấn
+                                    </CardTitle>
+                                    <CardDescription>Trường đại học, chuyên ngành và liên hệ khẩn cấp</CardDescription>
+                                </div>
+                                <Button 
+                                    onClick={handleOpenEditProfile} 
+                                    variant="outline"
+                                    className="border-indigo-200 hover:bg-indigo-50 text-indigo-600 gap-1.5 font-semibold text-sm shadow-sm"
+                                >
+                                    <Edit3 className="h-4 w-4" />
+                                    Chỉnh Sửa
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <span className="text-slate-400 font-medium block text-xs">Trường học</span>
+                                    <span className="font-bold text-slate-700 mt-1 block">{profile.university || "Chưa cập nhật"}</span>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <span className="text-slate-400 font-medium block text-xs">Chuyên ngành</span>
+                                    <span className="font-bold text-slate-700 mt-1 block">{profile.major || "Chưa cập nhật"}</span>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <span className="text-slate-400 font-medium block text-xs">Liên hệ khẩn cấp</span>
+                                    <span className="font-bold text-slate-700 mt-1 block">{profile.emergency_contact || "Chưa cập nhật"}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <Card className="shadow-sm border-gray-200">
                         <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
                             <div>
@@ -204,7 +263,7 @@ export default function SkillTracking() {
                                     <label className="text-sm font-medium text-gray-700">Ý Kiến Phản Hồi / Nhận Xét</label>
                                     <textarea
                                         value={comment}
-                                        onChange={(e: any) => setComment(e.target.value)}
+                                        onChange={(e) => setComment(e.target.value)}
                                         placeholder="Hãy nhập ý kiến đóng góp của bạn về sự hỗ trợ của Mentor..."
                                         rows={4}
                                         className="text-sm w-full border rounded-md p-2 bg-white"
@@ -242,6 +301,79 @@ export default function SkillTracking() {
                     </Card>
                 </div>
             </div>
+
+            {/* Dialog chỉnh sửa hồ sơ */}
+            <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-slate-800">
+                            {profile ? "Chỉnh Sửa Hồ Sơ Thực Tập" : "Khởi Tạo Hồ Sơ Thực Tập"}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSaveProfile} className="space-y-4 pt-2">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Trường đại học</label>
+                            <Input
+                                type="text"
+                                required
+                                value={editUniversity}
+                                onChange={(e) => setEditUniversity(e.target.value)}
+                                placeholder="Ví dụ: Đại học Bách Khoa Hà Nội"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Chuyên ngành</label>
+                            <Input
+                                type="text"
+                                required
+                                value={editMajor}
+                                onChange={(e) => setEditMajor(e.target.value)}
+                                placeholder="Ví dụ: Khoa học máy tính"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Các kỹ năng (ngăn cách bằng dấu phẩy)</label>
+                            <Input
+                                type="text"
+                                value={editSkills}
+                                onChange={(e) => setEditSkills(e.target.value)}
+                                placeholder="Ví dụ: React, Node.js, TypeScript"
+                            />
+                            <p className="text-[11px] text-slate-400">Nhập danh sách kỹ năng hiện có của bạn.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Liên hệ khẩn cấp (SĐT)</label>
+                            <Input
+                                type="text"
+                                required
+                                value={editEmergencyContact}
+                                onChange={(e) => setEditEmergencyContact(e.target.value)}
+                                placeholder="Ví dụ: 0987654321 (Mẹ)"
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-4 border-t">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsEditProfileOpen(false)}
+                            >
+                                Hủy Bỏ
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isSavingProfile}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow"
+                            >
+                                {isSavingProfile ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : null}
+                                Lưu Thay Đổi
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { trainingApi } from "@/api/training.api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, GraduationCap, Loader2, User, Mail, Clock } from "lucide-react";
-import { toast } from "sonner";
 
 interface MyTraining {
     intern_training_id: number;
@@ -19,25 +18,14 @@ interface MyTraining {
 }
 
 export default function MyTrainings() {
-    const [myTrainings, setMyTrainings] = useState<MyTraining[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchMyTrainings = async () => {
-            try {
-                const res = await trainingApi.getMyTrainings();
-                if (res.status === 'success') {
-                    setMyTrainings(res.data);
-                }
-            } catch (error) {
-                toast.error("Không thể tải danh sách lịch đào tạo!");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchMyTrainings();
-    }, []);
+    // 1. useQuery lấy danh sách khóa học của Intern hiện tại
+    const { data: myTrainings = [], isLoading } = useQuery<MyTraining[]>({
+        queryKey: ['my-trainings'],
+        queryFn: async () => {
+            const res = await trainingApi.getMyTrainings();
+            return res.status === 'success' ? res.data : [];
+        }
+    });
 
     // Hàm tính toán phần trăm tiến độ thời gian thực của khóa học
     const calculateProgress = (startDateStr: string, endDateStr: string) => {

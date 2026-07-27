@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, GraduationCap, Calendar } from "lucide-react";
@@ -15,14 +16,47 @@ interface TrainingProgram {
 }
 
 export default function TrainingManagement() {
-    const [programs, setPrograms] = useState<TrainingProgram[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const queryClient = useQueryClient();
     const [showCreateForm, setShowCreateForm] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleCreateProgram = async (e: React.FormEvent<HTMLFormElement>) => {
+    // 1. useQuery lấy danh sách Khóa đào tạo
+    const { data: programs = [], isLoading } = useQuery<TrainingProgram[]>({
+        queryKey: ['training-programs'],
+        queryFn: async () => {
+            const res = await trainingApi.getAllPrograms();
+            return res.status === 'success' ? res.data : [];
+        }
+    });
+
+    // 2. Mutation tạo Khóa học mới
+    const createProgramMutation = useMutation({
+        mutationFn: (payload: { title: string; description: string; start_date: string; end_date: string }) =>
+            trainingApi.createProgram(payload),
+        onSuccess: () => {
+            toast.success('Tạo khóa đào tạo thành công!');
+            setShowCreateForm(false);
+            queryClient.invalidateQueries({ queryKey: ['training-programs'] });
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Có lỗi xảy ra');
+        }
+    });
+
+    // 3. Mutation thêm Thực tập sinh vào Khóa học
+    const enrollInternMutation = useMutation({
+        mutationFn: ({ programId, internId }: { programId: number; internId: number }) =>
+            trainingApi.enrollIntern(programId, internId),
+        onSuccess: () => {
+            toast.success('Đã thêm Intern vào khóa học!');
+            queryClient.invalidateQueries({ queryKey: ['training-programs'] });
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Lỗi thêm học viên');
+        }
+    });
+
+    const handleCreateProgram = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setIsSubmitting(true);
         const formData = new FormData(e.currentTarget);
         const payload = {
             title: String(formData.get('title') || ''),
@@ -30,38 +64,8 @@ export default function TrainingManagement() {
             start_date: String(formData.get('start_date') || ''),
             end_date: String(formData.get('end_date') || '')
         };
-
-        try {
-            const res = await trainingApi.createProgram(payload);
-            if (res.status === 'success') {
-                toast.success('Tạo khóa đào tạo thành công!');
-                setShowCreateForm(false);
-                // Fetch lại để cập nhật danh sách
-                const refresh = await trainingApi.getAllPrograms();
-                setPrograms(refresh.data);
-            }
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Có lỗi xảy ra');
-        } finally {
-            setIsSubmitting(false);
-        }
+        createProgramMutation.mutate(payload);
     };
-
-    useEffect(() => {
-        const fetchPrograms = async () => {
-            try {
-                const res = await trainingApi.getAllPrograms();
-                if (res.status === 'success') {
-                    setPrograms(res.data);
-                }
-            } catch (error) {
-                toast.error("Không thể tải danh sách Khóa học đào tạo!");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchPrograms();
-    }, []);
 
     if (isLoading) {
         return (
@@ -116,8 +120,9 @@ export default function TrainingManagement() {
                                     <input required type="date" name="end_date" className="mt-1 w-full border rounded-md p-2" />
                                 </div>
                             </div>
-                            <button type="submit" disabled={isSubmitting} className="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium">
-                                {isSubmitting ? 'Đang tạo...' : 'Lưu Khóa Học'}
+                            <button type="submit" disabled={createProgramMutation.isPending} className="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium flex items-center gap-2">
+                                {createProgramMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                                {createProgramMutation.isPending ? 'Đang tạo...' : 'Lưu Khóa Học'}
                             </button>
                         </form>
                     </CardContent>
@@ -139,7 +144,7 @@ export default function TrainingManagement() {
                         <TableBody>
                             {programs.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-10 text-gray-500 italic">
+                                    <TableCell colSpan={5} className="text-center py-10 text-gray-500 italic">
                                         Chưa có khóa học nào trong hệ thống.
                                     </TableCell>
                                 </TableRow>
@@ -169,21 +174,19 @@ export default function TrainingManagement() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <form 
-                                                onSubmit={async (e) => {
+                                                onSubmit={(e) => {
                                                     e.preventDefault();
-                                                    const internId = (e.currentTarget.elements.namedItem('intern_id') as HTMLInputElement).value;
-                                                    try {
-                                                        await trainingApi.enrollIntern(prog.id, Number(internId));
-                                                        toast.success('Đã thêm Intern vào khóa học!');
-                                                        (e.target as HTMLFormElement).reset();
-                                                    } catch (err: any) {
-                                                        toast.error(err.response?.data?.message || 'Lỗi thêm học viên');
-                                                    }
+                                                    const form = e.currentTarget;
+                                                    const internIdInput = form.elements.namedItem('intern_id') as HTMLInputElement;
+                                                    const internId = Number(internIdInput.value);
+                                                    enrollInternMutation.mutate({ programId: prog.id, internId }, {
+                                                        onSuccess: () => form.reset()
+                                                    });
                                                 }}
                                                 className="flex items-center justify-end gap-2"
                                             >
                                                 <input required name="intern_id" type="number" placeholder="Intern ID" className="border rounded px-2 py-1 w-24 text-sm" />
-                                                <button type="submit" className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1 rounded text-sm font-medium transition-colors">
+                                                <button type="submit" disabled={enrollInternMutation.isPending} className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1 rounded text-sm font-medium transition-colors">
                                                     + Thêm
                                                 </button>
                                             </form>

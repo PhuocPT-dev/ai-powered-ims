@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -20,51 +21,37 @@ export interface Job {
     status: 'OPEN' | 'CLOSED';
 }
 
+interface CandidateInterview {
+    id: number;
+    job_title: string;
+    status: 'SCHEDULED' | 'COMPLETED' | 'CANCELED';
+    interview_time: string;
+    coordinator_name?: string;
+    meeting_link?: string;
+}
+
 export default function CareersPage() {
-    const [jobs, setJobs] = useState<Job[]>([]);
     const { user, logout } = useAuthStore();
-
-    // Quản lý Dialog lịch phỏng vấn
     const [isInterviewOpen, setIsInterviewOpen] = useState(false);
-    const [myInterviews, setMyInterviews] = useState<any[]>([]);
-    const [isLoadingInterviews, setIsLoadingInterviews] = useState(false);
 
-    // Tải danh sách công việc
-    useEffect(() => {
-        const fetchJobs = async () => {
-            try {
-                const responseData = await jobApi.getAllJobs();
-                if (responseData.status === "success") {
-                    setJobs(responseData.data.jobs);
-                }
-            } catch (error) {
-                toast.error("Lỗi khi lấy danh sách việc làm");
-            }
-        };
-        fetchJobs();
-    }, []);
-
-    // Tải lịch phỏng vấn khi mở modal
-    useEffect(() => {
-        const fetchInterviews = async () => {
-            if (!user || user.role !== 'CANDIDATE') return;
-            setIsLoadingInterviews(true);
-            try {
-                const res = await interviewApi.getMyInterviews();
-                if (res.status === 'success') {
-                    setMyInterviews(res.data);
-                }
-            } catch (error) {
-                console.error("Lỗi khi tải lịch phỏng vấn:", error);
-            } finally {
-                setIsLoadingInterviews(false);
-            }
-        };
-
-        if (isInterviewOpen) {
-            fetchInterviews();
+    // 1. useQuery lấy danh sách việc làm đang tuyển
+    const { data: jobs = [], isLoading: isLoadingJobs } = useQuery<Job[]>({
+        queryKey: ['public-jobs'],
+        queryFn: async () => {
+            const responseData = await jobApi.getAllJobs();
+            return responseData.status === "success" ? responseData.data.jobs : [];
         }
-    }, [isInterviewOpen, user]);
+    });
+
+    // 2. useQuery lấy danh sách lịch phỏng vấn của Ứng viên (khi mở Dialog)
+    const { data: myInterviews = [], isLoading: isLoadingInterviews } = useQuery<CandidateInterview[]>({
+        queryKey: ['candidate-interviews', user?.id],
+        queryFn: async () => {
+            const res = await interviewApi.getMyInterviews();
+            return res.status === 'success' ? res.data : [];
+        },
+        enabled: isInterviewOpen && !!user && user.role === 'CANDIDATE'
+    });
 
     const handleLogout = () => {
         logout();
@@ -107,7 +94,7 @@ export default function CareersPage() {
                 </div>
             </nav>
 
-            {/* Header hoành tráng của trang Tuyển dụng */}
+            {/* Header của trang Tuyển dụng */}
             <header className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white py-16 px-6 text-center shadow-md">
                 <h1 className="text-4xl font-extrabold mb-4 tracking-tight">Cổng Thông Tin Thực Tập Sinh</h1>
                 <p className="text-lg text-blue-100 max-w-2xl mx-auto">
@@ -119,26 +106,32 @@ export default function CareersPage() {
             <main className="flex-1 max-w-5xl w-full mx-auto p-6 mt-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">🚀 Các Vị Trí Đang Mở</h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Báo lỗi nếu Backend chưa có bài đăng nào */}
-                    {jobs.length === 0 && <p className="text-gray-500 italic">Hiện tại chưa có công việc nào đang mở...</p>}
-                    {jobs.map((job) => (
-                        <Card key={job.id} className="hover:shadow-xl transition-shadow border-t-4 border-t-blue-500 flex flex-col bg-white">
-                            <CardHeader>
-                                <CardTitle className="text-xl text-blue-700 font-bold">{job.title}</CardTitle>
-                                <CardDescription className="font-semibold text-gray-500 mt-1">
-                                    📍 Hà Nội &nbsp;•&nbsp; 🎓 Phòng: {job.department} &nbsp;•&nbsp; ⏱️ Full-time
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex-1 flex flex-col">
-                                <p className="text-gray-600 mb-6 line-clamp-3 flex-1 text-sm leading-relaxed">
-                                    {job.description}
-                                </p>
-                                <ApplyJobDialog job={job} />
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                {isLoadingJobs ? (
+                    <div className="flex flex-col items-center justify-center py-20 space-y-3">
+                        <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                        <p className="text-sm text-gray-500">Đang tải danh sách việc làm...</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {jobs.length === 0 && <p className="text-gray-500 italic">Hiện tại chưa có công việc nào đang mở...</p>}
+                        {jobs.map((job) => (
+                            <Card key={job.id} className="hover:shadow-xl transition-shadow border-t-4 border-t-blue-500 flex flex-col bg-white">
+                                <CardHeader>
+                                    <CardTitle className="text-xl text-blue-700 font-bold">{job.title}</CardTitle>
+                                    <CardDescription className="font-semibold text-gray-500 mt-1">
+                                        📍 Hà Nội &nbsp;•&nbsp; 🎓 Phòng: {job.department || "IT"} &nbsp;•&nbsp; ⏱️ Full-time
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex-1 flex flex-col">
+                                    <p className="text-gray-600 mb-6 line-clamp-3 flex-1 text-sm leading-relaxed">
+                                        {job.description}
+                                    </p>
+                                    <ApplyJobDialog job={job} />
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )}
             </main>
 
             {/* Dialog xem lịch phỏng vấn của ứng viên */}
@@ -162,7 +155,7 @@ export default function CareersPage() {
                         </div>
                     ) : (
                         <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                            {myInterviews.map((iv: any) => (
+                            {myInterviews.map((iv) => (
                                 <div key={iv.id} className="p-4 bg-slate-50 border border-slate-150 rounded-lg space-y-3">
                                     <div className="flex items-center justify-between gap-2">
                                         <h4 className="font-bold text-slate-800 text-sm leading-snug">{iv.job_title}</h4>

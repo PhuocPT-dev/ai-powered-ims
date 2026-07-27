@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { taskApi, type Task } from '../../api/task.api';
 import { toast } from 'sonner';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
@@ -11,21 +11,34 @@ const COLUMNS = [
 ];
 
 export default function TaskBoard() {
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const fetchTasks = async () => {
-        try {
+    const queryClient = useQueryClient();
+
+    // 1. Dùng useQuery lấy danh sách Task của Intern (thay thế useState + useEffect fetchTasks)
+    const { data: tasks = [], isLoading } = useQuery<Task[]>({
+        queryKey: ['my-tasks'],
+        queryFn: async () => {
             const res = await taskApi.getMyTasks();
-            setTasks(res.data);
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || "Lỗi tải công việc");
+            return res.data;
         }
-    };
+    });
 
-    useEffect(() => {
-        fetchTasks();
-    }, []);
+    // 2. Mutation cập nhật trạng thái khi kéo thả Kanban
+    const updateStatusMutation = useMutation({
+        mutationFn: ({ taskId, newStatus }: { taskId: number; newStatus: 'TODO' | 'IN_PROGRESS' | 'DONE' }) =>
+            taskApi.updateStatus(taskId, newStatus),
+        onSuccess: () => {
+            toast.success("Đã báo cáo tiến độ thành công!");
+            // Cập nhật lại dữ liệu Kanban từ server
+            queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || "Lỗi cập nhật trạng thái");
+            // Tải lại dữ liệu ban đầu nếu bị lỗi
+            queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+        }
+    });
 
-    const onDragEnd = async (result: DropResult) => {
+    const onDragEnd = (result: DropResult) => {
         const { destination, source, draggableId } = result;
 
         // Nếu thả ra ngoài cột, hoặc thả lại vị trí cũ
@@ -41,20 +54,22 @@ export default function TaskBoard() {
             return;
         }
 
-        // Cập nhật giao diện trước (Optimistic Update)
-        const prevTasks = [...tasks];
-        setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus as any } : t));
-
-        try {
-            await taskApi.updateStatus(taskId, newStatus as any);
-            toast.success("Đã báo cáo tiến độ thành công!");
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || "Lỗi cập nhật trạng thái");
-            setTasks(prevTasks); // Khôi phục lại nếu lỗi
-        }
+        // Kích hoạt mutation gửi trạng thái mới lên server
+        updateStatusMutation.mutate({
+            taskId,
+            newStatus: newStatus as 'TODO' | 'IN_PROGRESS' | 'DONE'
+        });
     };
 
     const getTasksByStatus = (status: string) => tasks.filter(t => t.status === status);
+
+    if (isLoading) {
+        return (
+            <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+                <p className="text-gray-500 font-medium">Đang tải bảng công việc...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">

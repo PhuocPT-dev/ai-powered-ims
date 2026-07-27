@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,35 +18,36 @@ interface Application {
 }
 
 export default function CVManagement() {
-    // 💡 KIẾN THỨC MỚI: Dùng useParams để Lấy cái ID của Job từ trên thanh URL xuống (Vd: URL là /jobs/5 thì id = 5)
     const { id } = useParams();
+    const queryClient = useQueryClient();
 
-    const [applications, setApplications] = useState<Application[]>([]);
+    // 1. Dùng useQuery lấy danh sách đơn xin việc theo Job ID
+    const { data: applications = [], isLoading } = useQuery<Application[]>({
+        queryKey: ['applications', id],
+        queryFn: async () => {
+            if (!id) return [];
+            const responseData = await applicationApi.getApplicationsByJob(id);
+            return responseData.data;
+        },
+        enabled: !!id // Chỉ tự động gọi API khi id tồn tại
+    });
 
-    const fetchApplications = async () => {
-        try {
-            if (id) {
-                const responseData = await applicationApi.getApplicationsByJob(id);
-                setApplications(responseData.data)
-            }
-        } catch (error) {
-            toast.error("Không thể tải danh sách hồ sơ")
-        }
-    }
-
-    useEffect(() => {
-        fetchApplications()
-    }, [id]);
-
-    const handleUpdateStatus = async (appId: number, status: string) => {
-        try {
-            await applicationApi.updateStatus(appId, status);
-            toast.success(`Đã đánh dấu đơn này là: ${status}`);
-            // Gọi lại hàm fetch để tải lại dữ liệu mới
-            fetchApplications();
-        } catch (error: any) {
+    // 2. Dùng useMutation cập nhật trạng thái đơn (Duyệt / Loại)
+    const updateStatusMutation = useMutation({
+        mutationFn: ({ appId, status }: { appId: number; status: string }) =>
+            applicationApi.updateStatus(appId, status),
+        onSuccess: (_, variables) => {
+            toast.success(`Đã đánh dấu đơn này là: ${variables.status}`);
+            // Làm mới dữ liệu cache 'applications' thuộc Job id hiện tại
+            queryClient.invalidateQueries({ queryKey: ['applications', id] });
+        },
+        onError: (error: any) => {
             toast.error(error.response?.data?.message || "Lỗi khi cập nhật trạng thái");
         }
+    });
+
+    const handleUpdateStatus = (appId: number, status: string) => {
+        updateStatusMutation.mutate({ appId, status });
     };
 
     return (
@@ -68,71 +69,75 @@ export default function CVManagement() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {applications.map((app) => (
-                            <TableRow key={app.id}>
-                                <TableCell className="font-medium text-gray-600">#{app.id}</TableCell>
-                                <TableCell>
-                                    <a href={app.cv_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">
-                                        Xem CV
-                                    </a>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                    {app.ai_score !== null && app.ai_score !== undefined ? (
-                                        <Badge className={`font-bold text-xs px-2.5 py-1 ${
-                                            app.ai_score >= 8 ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-50' :
-                                            app.ai_score >= 5 ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50' :
-                                            'bg-red-50 text-red-700 border-red-200 hover:bg-red-50'
-                                        }`} variant="outline">
-                                            ⭐ {app.ai_score}/10
-                                        </Badge>
-                                    ) : (
-                                        <span className="text-gray-400 italic text-xs">Chưa chấm</span>
-                                    )}
-                                </TableCell>
-                                <TableCell className="text-sm text-gray-600 italic line-clamp-2" title={app.ai_summary}>
-                                    {app.ai_summary}
-                                </TableCell>
-                                {/* Badge đổi màu tùy theo trạng thái */}
-                                <TableCell>
-                                    <Badge
-                                        variant="outline"
-                                        className={
-                                            app.status === 'ACCEPTED' ? "text-green-700 border-green-300 bg-green-50" :
-                                                app.status === 'REJECTED' ? "text-red-700 border-red-300 bg-red-50" :
-                                                    "text-yellow-700 border-yellow-300 bg-yellow-50"
-                                        }
-                                    >
-                                        {app.status}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="text-right space-x-2">
-                                    <Button
-                                        size="sm"
-                                        className="bg-green-600 hover:bg-green-700 text-white"
-                                        onClick={() => handleUpdateStatus(app.id, 'ACCEPTED')}
-                                        disabled={app.status === 'ACCEPTED'}
-                                    >
-                                        Duyệt
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => handleUpdateStatus(app.id, 'REJECTED')}
-                                        disabled={app.status === 'REJECTED'}
-                                    >
-                                        Loại
-                                    </Button>
+                        {isLoading ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="text-center text-gray-500 py-6">
+                                    Đang tải hồ sơ ứng viên...
                                 </TableCell>
                             </TableRow>
-                        ))}
-
-                        {/* Nếu chưa có ai nộp đơn thì hiện dòng này cho đỡ trống */}
-                        {applications.length === 0 && (
+                        ) : applications.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center text-gray-500 py-6">
                                     Chưa có ứng viên nào nộp hồ sơ cho Job này.
                                 </TableCell>
                             </TableRow>
+                        ) : (
+                            applications.map((app) => (
+                                <TableRow key={app.id}>
+                                    <TableCell className="font-medium text-gray-600">#{app.id}</TableCell>
+                                    <TableCell>
+                                        <a href={app.cv_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">
+                                            Xem CV
+                                        </a>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        {app.ai_score !== null && app.ai_score !== undefined ? (
+                                            <Badge className={`font-bold text-xs px-2.5 py-1 ${
+                                                app.ai_score >= 8 ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-50' :
+                                                app.ai_score >= 5 ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50' :
+                                                'bg-red-50 text-red-700 border-red-200 hover:bg-red-50'
+                                            }`} variant="outline">
+                                                ⭐ {app.ai_score}/10
+                                            </Badge>
+                                        ) : (
+                                            <span className="text-gray-400 italic text-xs">Chưa chấm</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-sm text-gray-600 italic line-clamp-2" title={app.ai_summary}>
+                                        {app.ai_summary}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge
+                                            variant="outline"
+                                            className={
+                                                app.status === 'ACCEPTED' ? "text-green-700 border-green-300 bg-green-50" :
+                                                    app.status === 'REJECTED' ? "text-red-700 border-red-300 bg-red-50" :
+                                                        "text-yellow-700 border-yellow-300 bg-yellow-50"
+                                            }
+                                        >
+                                            {app.status}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right space-x-2">
+                                        <Button
+                                            size="sm"
+                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                            onClick={() => handleUpdateStatus(app.id, 'ACCEPTED')}
+                                            disabled={app.status === 'ACCEPTED' || updateStatusMutation.isPending}
+                                        >
+                                            Duyệt
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={() => handleUpdateStatus(app.id, 'REJECTED')}
+                                            disabled={app.status === 'REJECTED' || updateStatusMutation.isPending}
+                                        >
+                                            Loại
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
                         )}
                     </TableBody>
                 </Table>
@@ -140,4 +145,3 @@ export default function CVManagement() {
         </div>
     );
 }
-
